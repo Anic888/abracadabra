@@ -17,6 +17,18 @@
 ![langs](https://img.shields.io/badge/UI-RU_·_EN_·_中文_·_ES-8fffc0?style=flat-square&labelColor=050607)
 ![license](https://img.shields.io/badge/license-MIT-8fffc0?style=flat-square&labelColor=050607)
 
+<br>
+
+### 🚀 [Открыть онлайн / Open the app](https://anic888.github.io/abracadabra/) &nbsp;·&nbsp; ⬇️ [Скачать файл / Download](https://github.com/Anic888/abracadabra/releases/latest/download/abracadabra.html)
+
+*Онлайн и скачанный файл — одно и то же приложение: всё считается на вашем устройстве, в сеть ничего не уходит.*
+*The online and downloaded versions are the same app: everything runs on your device, nothing touches the network.*
+
+📱 *С телефона: откройте ссылку → «Добавить на экран „Домой“» — установится как приложение и дальше работает офлайн (PWA).*
+📱 *On mobile: open the link → “Add to Home Screen” — it installs as an app and keeps working fully offline (PWA).*
+
+<br>
+
 <img src="screenshots/password-mode.png" alt="Abracadabra — password mode" width="820">
 
 </div>
@@ -33,7 +45,7 @@ The whole app is **one HTML file**. Download it, double-click it, done. It works
 
 ### Quick start
 
-1. **Download** [`index.html`](index.html) (or open the live page if enabled) and open it in any modern browser.
+1. [**Open the app online**](https://anic888.github.io/abracadabra/) — or [**download `abracadabra.html`**](https://github.com/Anic888/abracadabra/releases/latest/download/abracadabra.html) and open it in any modern browser (works fully offline).
 2. Paste your text, set a password — your own or the built-in generator (`[ RANDOM ]`, ~149 bits).
 3. **Encrypt** → copy the `ABRA2.…` gibberish → send it through anything.
 4. Your contact opens the same file, pastes the blob, enters the same password → **Decrypt**.
@@ -106,7 +118,7 @@ All formats stay readable in newer versions. UI language never affects compatibi
 
 ### Быстрый старт
 
-1. **Скачайте** [`index.html`](index.html) и откройте в любом современном браузере.
+1. [**Откройте онлайн**](https://anic888.github.io/abracadabra/) — или [**скачайте `abracadabra.html`**](https://github.com/Anic888/abracadabra/releases/latest/download/abracadabra.html) и откройте в любом браузере (работает полностью офлайн).
 2. Вставьте текст, задайте пароль — свой или из генератора (`[ СЛУЧАЙНЫЙ ]`, ~149 бит).
 3. **Зашифровать** → скопируйте абракадабру `ABRA2.…` → отправляйте чем угодно.
 4. Собеседник открывает такой же файл, вставляет шифровку, вводит тот же пароль → **Расшифровать**.

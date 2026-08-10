@@ -1,0 +1,15 @@
+{
+  "name": "Abracadabra — offline text cipher",
+  "short_name": "Abracadabra",
+  "description": "Offline single-file text cipher: AES-256-GCM ⊕ ChaCha20 cascade, Argon2id, post-quantum keys mode (X-Wing). Nothing leaves your device.",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#050607",
+  "theme_color": "#050607",
+  "icons": [
+    { "src": "icons/icon-192.png", "sizes": "192x192", "type": "image/png" },
+    { "src": "icons/icon-512.png", "sizes": "512x512", "type": "image/png" },
+    { "src": "icons/icon-maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ]
+}
