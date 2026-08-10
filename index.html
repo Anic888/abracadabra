@@ -229,6 +229,14 @@ textarea::-webkit-scrollbar-track{background:transparent}
 .pass-hint{min-height:20px;margin:5px 2px 0;font-size:11.5px;color:var(--amber);letter-spacing:.02em}
 .pass-hint.ok{color:var(--neon)}
 
+/* ── файл-карточка и drag&drop ── */
+.filecard{display:flex;align-items:center;gap:10px;padding:14px 13px 16px;font-size:13px;color:var(--text)}
+.filecard .fc-ic{color:var(--neon);font-weight:700}
+.filecard b{font-weight:700;color:var(--neon-soft);word-break:break-all}
+.filecard .fc-size{color:var(--faint);white-space:nowrap}
+.filecard .btn-ghost{margin-left:auto}
+.panel.dropping{border-color:var(--neon);box-shadow:0 0 24px rgba(61,255,140,.18)}
+
 /* поля ключей */
 #theirPub{min-height:66px;font-size:12px}
 .keyin{padding-right:0}
@@ -414,11 +422,15 @@ footer .sep{color:var(--line-strong)}
     <button class="btn-ghost wipe" id="wipeAllBtn" type="button">[ × СТЕРЕТЬ ВСЁ ]</button>
   </div>
 
-  <div class="panel">
+  <div class="panel" id="inPanel">
     <div class="field-head">
       <label for="input" id="lblIn">ВХОД <b>//</b> ТЕКСТ ИЛИ ШИФРОВКА</label>
-      <button class="btn-ghost" id="clearBtn" type="button">[ ОЧИСТИТЬ ]</button>
+      <div class="grp">
+        <button class="btn-ghost" id="filePickBtn" type="button">[ ФАЙЛ ]</button>
+        <button class="btn-ghost" id="clearBtn" type="button">[ ОЧИСТИТЬ ]</button>
+      </div>
     </div>
+    <div class="filecard" id="fileCard" hidden></div>
     <textarea id="input" spellcheck="false" autocapitalize="off" autocomplete="off"></textarea>
   </div>
 
@@ -480,7 +492,7 @@ footer .sep{color:var(--line-strong)}
   <footer>
     <div class="brandline">
       <div class="barcode" aria-hidden="true"></div>
-      <span>ABRA://4.1</span>
+      <span>ABRA://5.0</span>
     </div>
     <div>OFFLINE <span class="sep">//</span> AES⊕CHACHA <span class="sep">//</span> X-WING <span class="sep">//</span> ARGON2ID</div>
   </footer>
@@ -988,6 +1000,12 @@ ru: {
   stWiped:'ВСЁ СТЁРТО: ТЕКСТ, ПАРОЛЬ, КЛЮЧИ, РЕЗУЛЬТАТ',
   stWipedTimer:'ТАЙМЕР СРАБОТАЛ — ВСЁ СТЁРТО',
   stSrcWiped:' · ИСХОДНИК СТЁРТ',
+  bFilePick:'[ ФАЙЛ ]', bFileClear:'[ × УБРАТЬ ]', uKb:'КБ', uMb:'МБ',
+  stFileEncOk:'OK // ФАЙЛ ЗАШИФРОВАН И СКАЧАН: ',
+  stFileDecOk:'OK // ФАЙЛ РАСШИФРОВАН И СКАЧАН: ',
+  stFileTooBig:'ФАЙЛ БОЛЬШЕ 300 МБ — БРАУЗЕРУ СТАНЕТ ПЛОХО. РАЗБЕЙТЕ АРХИВОМ НА ЧАСТИ',
+  stFileIsCont:'ЭТО УЖЕ ШИФРОВАННЫЙ .ABRA — НАЖМИТЕ «РАСШИФРОВАТЬ»',
+  stFileNotCont:'ЭТО ОБЫЧНЫЙ ФАЙЛ — НАЖМИТЕ «ЗАШИФРОВАТЬ»',
   fpMine:'ВАШ ОТПЕЧАТОК: ', fpTheir:'ОТПЕЧАТОК СОБЕСЕДНИКА: ',
   docSum:'Документация // как пользоваться',
   help:`<h4>Режим «Пароль»</h4>
@@ -1003,6 +1021,8 @@ ru: {
 <li><b>Получатель:</b> свой приватный (плюс, по желанию, публичный отправителя для сверки) → «Расшифровать». Внизу показывается отпечаток отправителя; «✓ ПОДТВЕРЖДЁН» — если он совпал с вставленным публичным ключом.</li>
 <li>Отпечатки удобно один раз сверить голосом — тогда подмену ключа сразу видно.</li>
 </ol>
+<h4>Файлы (PDF, Word, Excel — любые)</h4>
+<p>Кнопка [ ФАЙЛ ] — или перетащите файл в поле ввода. «Зашифровать» превращает его в контейнер <b>.abra</b> с нейтральным именем (abra-3f7c….abra): настоящее имя шифруется внутрь и снаружи не видно. Отправляйте .abra как обычное вложение — почтой, мессенджером, облаком. Получатель загружает его в такой же файл, вводит пароль или ключ — оригинал скачивается с исходным именем. Работают оба режима, включая подпись отправителя. Лимит ~300 МБ. Важно: шифрование прячет содержимое при передаче, но НЕ чистит метаданные внутри самого документа (автор в PDF/DOCX, EXIF в фото) — получатель получит файл ровно таким, каким он был.</p>
 <h4>Автостирание</h4>
 <p>[ ■ СТИРАТЬ ИСХОДНИК ] — после шифрования исходный текст сам удаляется из поля ввода (включено по умолчанию). ТАЙМЕР [ 5С/30С/1М/1Ч ] — обратный отсчёт: по истечении стирается всё — текст, результат, пароль и ключи из полей; повторное нажатие отключает. [ × СТЕРЕТЬ ВСЁ ] — мгновенная очистка всего (плюс буфер обмена, если копировали отсюда); то же — двойное нажатие Esc. Честно: поля и буфер чистятся, но ОС и браузер могут недолго держать копии в памяти — при реальной тревоге просто закройте вкладку.</p>
 <p>Неверный пароль/ключ не «портит» текст частично — расшифровка просто не сработает. Подмена или повреждение шифровки будут замечены. Длина округляется до «корзин», поэтому «да» и абзац выглядят одинаково.</p>
@@ -1062,6 +1082,12 @@ en: {
   stWiped:'WIPED: TEXT, PASSWORD, KEYS, RESULT',
   stWipedTimer:'TIMER FIRED — ALL WIPED',
   stSrcWiped:' · SOURCE WIPED',
+  bFilePick:'[ FILE ]', bFileClear:'[ × REMOVE ]', uKb:'KB', uMb:'MB',
+  stFileEncOk:'OK // FILE ENCRYPTED AND DOWNLOADED: ',
+  stFileDecOk:'OK // FILE DECRYPTED AND DOWNLOADED: ',
+  stFileTooBig:'FILE OVER 300 MB — THE BROWSER WOULD CHOKE. SPLIT IT INTO ARCHIVE PARTS',
+  stFileIsCont:'THIS IS ALREADY AN ENCRYPTED .ABRA — PRESS “DECRYPT”',
+  stFileNotCont:'THIS IS A REGULAR FILE — PRESS “ENCRYPT”',
   fpMine:'YOUR FINGERPRINT: ', fpTheir:'CONTACT FINGERPRINT: ',
   docSum:'Documentation // how to use',
   help:`<h4>Password mode</h4>
@@ -1077,6 +1103,8 @@ en: {
 <li><b>Recipient:</b> your private (optionally the sender’s public to check) → “Decrypt”. The sender’s fingerprint is shown; “✓ VERIFIED” means it matched the public key you pasted.</li>
 <li>Compare fingerprints once by voice — then a swapped key is obvious.</li>
 </ol>
+<h4>Files (PDF, Word, Excel — anything)</h4>
+<p>Press [ FILE ] — or drag a file onto the input panel. “Encrypt” turns it into an <b>.abra</b> container with a neutral name (abra-3f7c….abra): the real filename is encrypted inside and never visible in transit. Send the .abra like any attachment — email, messenger, cloud. The recipient loads it into the same file, enters the password or key — the original downloads with its true name. Both modes work, including sender signatures. Limit ~300 MB. Note: encryption hides the content in transit but does NOT scrub metadata inside the document itself (author fields in PDF/DOCX, EXIF in photos) — the recipient gets the file exactly as it was.</p>
 <h4>Auto-wipe</h4>
 <p>[ ■ WIPE SOURCE ] — the original text erases itself from the input after encryption (on by default). TIMER [ 5S/30S/1M/1H ] — a countdown that wipes everything when it fires: text, result, password and key fields; press again to disarm. [ × WIPE ALL ] — instant wipe of everything (plus the clipboard, if you copied from here); double-press Esc does the same. Honest note: fields and clipboard are cleared, but the OS and browser may briefly keep copies in memory — under real pressure, just close the tab.</p>
 <p>A wrong password/key never “partially garbles” the text — decryption simply fails. Tampering or corruption is detected. Length is rounded to buckets, so “yes” and a paragraph look identical.</p>
@@ -1136,6 +1164,12 @@ zh: {
   stWiped:'已全部清除：文本、口令、密钥、结果',
   stWipedTimer:'定时触发 — 已全部清除',
   stSrcWiped:' · 源文已清除',
+  bFilePick:'[ 文件 ]', bFileClear:'[ × 移除 ]', uKb:'KB', uMb:'MB',
+  stFileEncOk:'OK // 文件已加密并下载：',
+  stFileDecOk:'OK // 文件已解密并下载：',
+  stFileTooBig:'文件超过 300 MB — 浏览器吃不消。请先用压缩包分卷',
+  stFileIsCont:'这已经是加密的 .ABRA 容器 — 请点击「解密」',
+  stFileNotCont:'这是普通文件 — 请点击「加密」',
   fpMine:'你的指纹：', fpTheir:'对方指纹：',
   docSum:'文档 // 使用说明',
   help:`<h4>口令模式</h4>
@@ -1151,6 +1185,8 @@ zh: {
 <li><b>接收方：</b>你的私钥（可选：粘贴发送方公钥以核对）→「解密」。下方显示发送方指纹；「✓ 已验证」表示与你粘贴的公钥一致。</li>
 <li>建议当面/语音核对一次指纹 — 这样密钥被替换会立刻发现。</li>
 </ol>
+<h4>文件（PDF、Word、Excel — 任何格式）</h4>
+<p>点击 [ 文件 ]，或把文件拖到输入框上。「加密」会把它变成 <b>.abra</b> 容器，使用中性文件名（abra-3f7c….abra）：真实文件名被加密在内部，传输途中不可见。把 .abra 当普通附件发送 — 邮件、即时通讯、网盘均可。接收方在同样的工具里载入它，输入口令或密钥 — 原始文件以原名下载。两种模式都支持，包括发送方签名。上限约 300 MB。注意：加密只保护传输中的内容，不会清理文档内部的元数据（PDF/DOCX 的作者字段、照片的 EXIF）— 接收方拿到的文件与原件完全一致。</p>
 <h4>自动清除</h4>
 <p>[ ■ 加密后清源文 ] — 加密完成后自动清空输入框中的原文（默认开启）。定时 [ 5秒/30秒/1分/1时 ] — 倒计时结束后清除一切：文本、结果、口令与密钥字段；再次点击可取消。[ × 全部清除 ] — 立即清除全部（若曾从本页复制，还会清空剪贴板）；连按两次 Esc 效果相同。说明：字段与剪贴板会被清空，但操作系统与浏览器可能短暂在内存中保留副本 — 紧急情况下直接关闭标签页。</p>
 <p>口令/密钥错误不会「部分损坏」文本 — 解密只会直接失败。篡改或损坏也会被发现。长度按「桶」取整，因此「好」和一整段看起来一样长。</p>
@@ -1210,6 +1246,12 @@ es: {
   stWiped:'BORRADO: TEXTO, CONTRASEÑA, CLAVES, RESULTADO',
   stWipedTimer:'TEMPORIZADOR ACTIVADO — TODO BORRADO',
   stSrcWiped:' · ORIGEN BORRADO',
+  bFilePick:'[ ARCHIVO ]', bFileClear:'[ × QUITAR ]', uKb:'KB', uMb:'MB',
+  stFileEncOk:'OK // ARCHIVO CIFRADO Y DESCARGADO: ',
+  stFileDecOk:'OK // ARCHIVO DESCIFRADO Y DESCARGADO: ',
+  stFileTooBig:'ARCHIVO DE MÁS DE 300 MB — EL NAVEGADOR SUFRIRÍA. DIVÍDELO EN PARTES',
+  stFileIsCont:'ESTO YA ES UN .ABRA CIFRADO — PULSA «DESCIFRAR»',
+  stFileNotCont:'ESTO ES UN ARCHIVO NORMAL — PULSA «CIFRAR»',
   fpMine:'TU HUELLA: ', fpTheir:'HUELLA DEL CONTACTO: ',
   docSum:'Documentación // cómo usar',
   help:`<h4>Modo contraseña</h4>
@@ -1225,6 +1267,8 @@ es: {
 <li><b>Destinatario:</b> tu privada (opcional: su pública para cotejar) → «Descifrar». Se muestra la huella del remitente; «✓ VERIFICADO» si coincide con la clave pública que pegaste.</li>
 <li>Coteja las huellas una vez de viva voz — así un cambio de clave se nota enseguida.</li>
 </ol>
+<h4>Archivos (PDF, Word, Excel — lo que sea)</h4>
+<p>Pulsa [ ARCHIVO ] o arrastra un archivo al panel de entrada. «Cifrar» lo convierte en un contenedor <b>.abra</b> con nombre neutro (abra-3f7c….abra): el nombre real va cifrado dentro y nunca se ve en tránsito. Envía el .abra como cualquier adjunto — correo, mensajería, nube. El destinatario lo carga en el mismo archivo, introduce la contraseña o clave — y el original se descarga con su nombre verdadero. Funcionan ambos modos, incluida la firma del remitente. Límite ~300 MB. Ojo: el cifrado oculta el contenido en tránsito pero NO limpia los metadatos internos del documento (autor en PDF/DOCX, EXIF en fotos) — el destinatario recibe el archivo tal cual era.</p>
 <h4>Borrado automático</h4>
 <p>[ ■ BORRAR ORIGEN ] — el texto original se borra solo del campo de entrada tras cifrar (activado por defecto). TEMPORIZADOR [ 5S/30S/1M/1H ] — cuenta atrás que al terminar borra todo: texto, resultado, contraseña y claves; púlsalo de nuevo para desactivar. [ × BORRAR TODO ] — borrado instantáneo de todo (y del portapapeles, si copiaste desde aquí); doble Esc hace lo mismo. Nota honesta: se limpian los campos y el portapapeles, pero el SO y el navegador pueden retener copias en memoria un tiempo — ante una urgencia real, cierra la pestaña.</p>
 <p>Una contraseña/clave incorrecta nunca «estropea» el texto a medias — el descifrado falla sin más. La manipulación o corrupción se detecta. La longitud se redondea a «cubos», así que un «sí» y un párrafo se ven iguales.</p>
@@ -1488,6 +1532,7 @@ outPanel.addEventListener('animationend', () => outPanel.classList.remove('zap')
 
 /* ── действия ── */
 async function doEncrypt(){
+  if(fileState){ return doEncryptFile(); }
   const text = input.value;
   if(!text.trim()){ setStatus('stNoText', 'err'); input.focus(); return; }
   if(MODE === 'keys'){
@@ -1519,6 +1564,7 @@ async function doEncrypt(){
 }
 
 async function doDecrypt(){
+  if(fileState){ return doDecryptFile(); }
   const raw = input.value;
   if(!raw.trim()){ setStatus('stPaste', 'err'); input.focus(); return; }
   const found = extractCipher(raw);
@@ -1697,6 +1743,7 @@ document.querySelectorAll('.tmr').forEach(b =>
 
 function doWipeAll(fromTimer){
   disarmTimer();
+  clearFileState();
   input.value = ''; password.value = ''; myPriv.value = ''; theirPub.value = '';
   showResult('', false);
   passHint.textContent = ''; passHint.className = 'pass-hint';
@@ -1719,6 +1766,201 @@ window.addEventListener('keydown', e => {
     else lastEsc = now;
   }
 });
+
+/* ═══════════ ФАЙЛЫ: контейнер .abra (формат ABRAF1) ═══════════
+   [ 'ABRAF1' | mode ] + пароль: [ salt16 | kdf1 | каскад ]
+                       + ключи:  [ kemCt1120 | sigPub32 | каскад | sig64 ]
+   Внутри каскада: u16 длина имени | имя UTF-8 | байты файла (+ паддинг корзинами).
+   Транспортное имя нейтральное — настоящее имя файла зашифровано. */
+const MAGICF = new Uint8Array([0x41,0x42,0x52,0x41,0x46,0x31]); /* 'ABRAF1' */
+const FILE_LIMIT = 300 * 1048576;
+let fileState = null; /* { name, bytes } */
+
+const fileInput = document.createElement('input');
+fileInput.type = 'file';
+fileInput.id = 'fileInput';
+fileInput.hidden = true;
+document.body.appendChild(fileInput);
+
+function fmtSize(n){
+  return n < 1048576 ? (n/1024).toFixed(1) + ' ' + L().uKb : (n/1048576).toFixed(1) + ' ' + L().uMb;
+}
+function isContainer(bytes){
+  if(!bytes || bytes.length < 8) return false;
+  for(let i = 0; i < 6; i++) if(bytes[i] !== MAGICF[i]) return false;
+  return true;
+}
+function renderFileUi(){
+  $('filePickBtn').textContent = L().bFilePick;
+  const card = $('fileCard');
+  if(fileState){
+    card.hidden = false;
+    card.innerHTML = '<span class="fc-ic">▤</span><b></b><span class="fc-size"></span><button class="btn-ghost" id="fileClearBtn" type="button"></button>';
+    card.querySelector('b').textContent = fileState.name;
+    card.querySelector('.fc-size').textContent = '· ' + fmtSize(fileState.bytes.length);
+    const fb = card.querySelector('#fileClearBtn');
+    fb.textContent = L().bFileClear;
+    fb.addEventListener('click', clearFileState);
+    input.style.display = 'none';
+  } else {
+    card.hidden = true; card.innerHTML = '';
+    input.style.display = '';
+  }
+}
+function clearFileState(){
+  fileState = null; fileInput.value = '';
+  renderFileUi();
+  const looksEncrypted = !!extractCipher(input.value);
+  encryptBtn.classList.toggle('primary', !looksEncrypted);
+  decryptBtn.classList.toggle('primary', looksEncrypted);
+}
+async function loadFile(f){
+  if(!f) return;
+  if(f.size > FILE_LIMIT){ setStatus('stFileTooBig', 'err'); return; }
+  const bytes = new Uint8Array(await f.arrayBuffer());
+  fileState = { name: f.name, bytes };
+  renderFileUi();
+  const isC = isContainer(bytes);
+  encryptBtn.classList.toggle('primary', !isC);
+  decryptBtn.classList.toggle('primary', isC);
+  setStatus(MODE === 'keys' ? 'stIdleK' : 'stIdle');
+}
+$('filePickBtn').addEventListener('click', () => fileInput.click());
+fileInput.addEventListener('change', () => loadFile(fileInput.files[0]));
+{
+  const zone = $('inPanel');
+  ['dragover','dragenter'].forEach(ev => zone.addEventListener(ev, e => { e.preventDefault(); zone.classList.add('dropping'); }));
+  ['dragleave','drop'].forEach(ev => zone.addEventListener(ev, e => { e.preventDefault(); zone.classList.remove('dropping'); }));
+  zone.addEventListener('drop', e => {
+    const f = e.dataTransfer && e.dataTransfer.files && e.dataTransfer.files[0];
+    if(f) loadFile(f);
+  });
+}
+
+function packInner(name, bytes){
+  const nb = enc.encode(name).slice(0, 512);
+  const out = new Uint8Array(2 + nb.length + bytes.length);
+  new DataView(out.buffer).setUint16(0, nb.length, false);
+  out.set(nb, 2); out.set(bytes, 2 + nb.length);
+  return out;
+}
+function unpackInner(data){
+  if(data.length < 2) throw new Error('inner');
+  const n = new DataView(data.buffer, data.byteOffset).getUint16(0, false);
+  if(2 + n > data.length) throw new Error('inner');
+  const name = (dec.decode(data.slice(2, 2 + n)) || 'file.bin').replace(/[\/\\]/g, '_');
+  return { name, bytes: data.slice(2 + n) };
+}
+function randContainerName(){
+  const b = crypto.getRandomValues(new Uint8Array(4));
+  return 'abra-' + Array.from(b, x => x.toString(16).padStart(2,'0')).join('') + '.abra';
+}
+function downloadBytes(bytes, name){
+  const blob = new Blob([bytes], { type: 'application/octet-stream' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = name;
+  document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 4000);
+}
+
+async function doEncryptFile(){
+  const f = fileState;
+  if(isContainer(f.bytes)){ setStatus('stFileIsCont', 'err'); return; }
+  const inner = packInner(f.name, f.bytes);
+  if(MODE === 'keys'){
+    let myId, their;
+    try{ myId = parsePriv(myPriv.value); }
+    catch(e){ setStatus(myPriv.value.trim() ? 'stBadPriv' : 'stNoMyId', 'err'); myPriv.focus(); return; }
+    try{ their = parsePub(theirPub.value); }
+    catch(e){ setStatus(theirPub.value.trim() ? 'stBadPub' : 'stNoTheir', 'err'); theirPub.focus(); return; }
+    setBusy(true, encryptBtn, L().bEncBusy); startProgress(L().progEncK);
+    try{
+      const recipHash = await sha256(their.kemPub);
+      const { sharedSecret: ss, cipherText: kemCt } = PQ.xwing.encapsulate(their.kemPub);
+      const body = await cascadeEncrypt(ss, inner, 'ABRAF-k-v1');
+      const head = concatBytes(MAGICF, new Uint8Array([2]), kemCt, myId.sigPub, body);
+      const sig = PQ.ed25519.sign(concatBytes(head, recipHash), myId.sigSec);
+      const outName = randContainerName();
+      downloadBytes(concatBytes(head, sig), outName);
+      if(srcWipeOn) clearFileState();
+      setStatus('stFileEncOk', 'ok', outName);
+      await showFingerprints(myId, their);
+    }catch(e){ setStatus('stEncFail', 'err', (e && e.message ? e.message : String(e))); }
+    finally{ setBusy(false, encryptBtn); }
+    return;
+  }
+  if(!password.value){ setStatus('stNoPassEnc', 'err'); password.focus(); return; }
+  setBusy(true, encryptBtn, L().bEncBusy); startProgress(L().progEnc);
+  try{
+    const salt = crypto.getRandomValues(new Uint8Array(16));
+    const { master, kdf } = await masterForEncrypt(password.value, salt);
+    const body = await cascadeEncrypt(master, inner, 'ABRAF-p-v1');
+    const outName = randContainerName();
+    downloadBytes(concatBytes(MAGICF, new Uint8Array([1]), salt, new Uint8Array([kdf]), body), outName);
+    if(srcWipeOn) clearFileState();
+    setStatus('stFileEncOk', 'ok', outName);
+  }catch(e){ setStatus('stEncFail', 'err', (e && e.message ? e.message : String(e))); }
+  finally{ setBusy(false, encryptBtn); }
+}
+
+async function doDecryptFile(){
+  const c = fileState.bytes;
+  if(!isContainer(c)){ setStatus('stFileNotCont', 'err'); return; }
+  const modeByte = c[6];
+  if(modeByte === 1 && MODE !== 'pass'){ setStatus('stWrongModeK', 'err'); return; }
+  if(modeByte === 2 && MODE !== 'keys'){ setStatus('stWrongModeP', 'err'); return; }
+
+  if(modeByte === 2){
+    let myId;
+    try{ myId = parsePriv(myPriv.value); }
+    catch(e){ setStatus(myPriv.value.trim() ? 'stBadPriv' : 'stNoMyId', 'err'); myPriv.focus(); return; }
+    let their = null;
+    if(theirPub.value.trim()){ try{ their = parsePub(theirPub.value); }catch(e){ their = null; } }
+    setBusy(true, decryptBtn, L().bDecBusy); startProgress(L().progDecK);
+    try{
+      const KEMCT = 1120, SPUB = 32, SIG = 64, HEAD = 7 + KEMCT + SPUB;
+      if(c.length < HEAD + SIG + 16) throw new Error('short');
+      const kemCt = c.slice(7, 7 + KEMCT);
+      const senderSigPub = c.slice(7 + KEMCT, HEAD);
+      const body = c.slice(HEAD, c.length - SIG);
+      const sig = c.slice(c.length - SIG);
+      const recipHash = await sha256(myId.kemPub);
+      if(!PQ.ed25519.verify(sig, concatBytes(c.slice(0, 7), kemCt, senderSigPub, body, recipHash), senderSigPub)){
+        const e = new Error('badsig'); e.badsig = true; throw e;
+      }
+      const ss = PQ.xwing.decapsulate(kemCt, myId.kemSeed);
+      const { name, bytes } = unpackInner(await cascadeDecrypt(ss, body, 'ABRAF-k-v1'));
+      downloadBytes(bytes, name);
+      clearFileState();
+      const fp = await fingerprint(senderSigPub);
+      const mark = their
+        ? (bytesEq(their.sigPub, senderSigPub) ? L().stVerified : '⚠ ' + L().stUnverified + fp)
+        : L().stUnverified + fp;
+      setStatus('stFileDecOk', 'ok', name + ' // ' + mark);
+    }catch(e){ setStatus(e && e.badsig ? 'stBadSig' : 'stBad', 'err'); }
+    finally{ setBusy(false, decryptBtn); }
+    return;
+  }
+
+  if(!password.value){ setStatus('stNoPass', 'err'); password.focus(); return; }
+  setBusy(true, decryptBtn, L().bDecBusy); startProgress(L().progDec);
+  try{
+    if(c.length < 24 + 16) throw new Error('short');
+    const salt = c.slice(7, 23), kdf = c[23], body = c.slice(24);
+    let master;
+    if(kdf === 1){
+      try{ master = await argonMaster(normPass(password.value), salt); }
+      catch(e){ const err = new Error('noargon'); err.noargon = true; throw err; }
+    } else if(kdf === 2){ master = await pbkdf2bits(normPass(password.value), salt, PBKDF2_FB); }
+    else throw new Error('kdf');
+    const { name, bytes } = unpackInner(await cascadeDecrypt(master, body, 'ABRAF-p-v1'));
+    downloadBytes(bytes, name);
+    clearFileState();
+    setStatus('stFileDecOk', 'ok', name);
+  }catch(e){ setStatus(e && e.noargon ? 'stNoArgon' : 'stBad', 'err'); }
+  finally{ setBusy(false, decryptBtn); }
+}
 
 let copiedTimer = null;
 copyBtn.addEventListener('click', async () => {
@@ -1779,6 +2021,7 @@ function applyLang(code){
   setPrivVisible(myPriv.type === 'text');
   if(passHint.textContent) passHint.textContent = passHint.classList.contains('ok') ? T.hintGen : T.hintShort;
   renderSecbar();
+  renderFileUi();
   setStatus(lastStatus.key, lastStatus.kind, lastStatus.extra);
   if(MODE === 'keys') refreshKeyFingerprints();
   document.querySelectorAll('.lang').forEach(b => b.classList.toggle('active', b.dataset.lang === LANG));
