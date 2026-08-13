@@ -118,6 +118,31 @@ regenerated once — see [CHANGELOG.md](CHANGELOG.md).
   WebSocket, EventSource, form submission) all thirteen are blocked.
 - **Read the code.** Open `index.html` in an editor — the application code is readable
   and commented; vendored crypto libraries are embedded minified with sources linked below.
+
+### Checksum — is this the real file?
+
+The tool is a single HTML file that travels by email, chat and USB stick. Nothing
+inside a page can prove that page has not been rewritten, so the check has to come
+from outside it. Current `index.html`:
+
+`bba97aaa54d59034f12cdd67626e27cfaa3b0bd130c770b83ba1dd3089d1beb5`
+
+```bash
+shasum -a 256 index.html          # macOS
+sha256sum index.html              # Linux
+certutil -hashfile index.html SHA256   # Windows (cmd)
+```
+
+**This only helps if the file and the number reach you by different routes.** Take the
+file from wherever it came — a friend, an attachment, a stick — and read the number
+here, over HTTPS, from the repository. If they disagree, the copy you hold is not the
+one that was published. Reading both off the same medium proves nothing: whoever
+altered the file would alter the number next to it.
+
+A checksum printed *inside* the app would be theatre for the same reason, which is why
+there isn't one. The number lives here, and `./checksum.sh` re-derives it so a stale
+value can never be published — a wrong checksum is worse than none, because it makes an
+honest copy look forged.
 - Threat model and honest limits: **[SECURITY.md](SECURITY.md)**.
 
 The design review, the pentest suite (45 executable exploits), the known-answer
@@ -161,7 +186,41 @@ privately, not published — running attack code is not something to hand out.
 
 ### Проверки
 
-ML-KEM/X-Wing сверен с официальными тест-векторами IETF/NIST (10/10). Встроенный ChaCha20 сверен с нативной реализацией OpenSSL (33 случайных кейса + вектор RFC 8439). 26 автотестов в реальном браузере. Файл самопроверяем — откройте `index.html` в редакторе.
+Кнопка `[ САМОТЕСТ ]` внизу страницы прогоняет **101 проверку** прямо в вашем
+браузере: контрольные векторы ChaCha20 (RFC 8439), Argon2id (RFC 9106), X-Wing и
+Ed25519; шифровки, созданные версией 5.0; и попытки подделки, каждая из которых
+обязана быть отвергнута. Каждая такая попытка — реальная найденная дыра,
+поставленная на дежурство, чтобы не вернуться.
+
+Откройте инструменты разработчика → «Сеть» и поработайте с программой: запросов
+быть не должно. Это обеспечивает политика самой страницы (`connect-src 'none'`), а
+не обещание в тексте — из тринадцати проверенных каналов утечки заблокированы все
+тринадцать. Сам код читаемый и с комментариями — откройте `index.html` в редакторе.
+
+### Контрольная сумма — тот ли это файл?
+
+Программа — один HTML-файл, который ходит по почте, мессенджерам и флешкам. Ничто
+внутри страницы не может доказать, что страницу не переписали, поэтому проверка
+обязана прийти **снаружи**. Текущий `index.html`:
+
+`bba97aaa54d59034f12cdd67626e27cfaa3b0bd130c770b83ba1dd3089d1beb5`
+
+```bash
+shasum -a 256 index.html          # macOS
+sha256sum index.html              # Linux
+certutil -hashfile index.html SHA256   # Windows (cmd)
+```
+
+**Это работает, только если файл и число пришли к вам разными путями.** Файл
+берите откуда взяли — от знакомого, из вложения, с флешки, — а число читайте
+здесь, по HTTPS, из репозитория. Не сошлось — у вас не тот файл, что публиковали.
+Сверять то и другое с одного носителя бессмысленно: кто подменил файл, подменит и
+число рядом с ним.
+
+Сумма, напечатанная **внутри** приложения, была бы по той же причине театром —
+поэтому её там и нет. Число живёт здесь, а `./checksum.sh` его пересчитывает,
+чтобы нельзя было опубликовать протухшее: неверная сумма хуже отсутствующей, она
+заставляет честную копию выглядеть подделкой.
 
 ---
 
