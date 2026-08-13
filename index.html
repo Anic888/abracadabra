@@ -1961,25 +1961,22 @@ const BIND_CTX = 'abracadabra/v1/pubkey';
 function bindPreimage(ver, sigPub, kemPub){
   return concatBytes(enc.encode(BIND_CTX), new Uint8Array([ver]), sigPub, kemPub);
 }
-/* У Ed25519 есть 8 «слабых» точек малого порядка (включая нулевую): для них
-   нулевая подпись сходится с ЛЮБЫМ сообщением. Сам по себе такой ключ никого не
-   выдаёт — его отпечаток ни с кем не совпадёт, — но принимать его как чей-то
-   ключ подписи нельзя: это открытая дверь. Отвергаем весь список, как libsodium
-   и Signal. Восемь точек — просто сравнение байтов, дёшево. */
-const ED_WEAK = new Set([
-  '0100000000000000000000000000000000000000000000000000000000000000',
-  '0000000000000000000000000000000000000000000000000000000000000000',
-  '0000000000000000000000000000000000000000000000000000000000000080',
-  'ecffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff',
-  'ecffffffffffffffffffffffffffffffffffffffffffffffffffffffffff7f'.padEnd(64,'f'),
-  'ecffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff7f',
-  'edffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff',
-  'c7176a703d4dd84fba3c0b760d10670f2a2053fa2c39ccc64ec7fd7792ac037a',
-  'c7176a703d4dd84fba3c0b760d10670f2a2053fa2c39ccc64ec7fd7792ac03fa',
-]);
+/* У Ed25519 есть точки малого порядка (нулевая, identity и ещё несколько): под
+   ними нулевая подпись сходится с ЛЮБЫМ сообщением. Сам по себе такой ключ
+   никого не выдаёт — его отпечаток ни с кем не совпадёт, — но принимать его как
+   чей-то ключ подписи нельзя: это открытая дверь.
+   Раньше здесь был жёсткий список кодировок, и в нём легко ошибиться — я сам
+   пропустил две точки. Теперь проверяем МАТЕМАТИЧЕСКИ: isSmallOrder() ловит все
+   такие точки разом (и identity, которую isTorsionFree пропускает), а невалидная
+   кодировка y просто не декодируется. Списком тут промахнуться нельзя. */
 function isWeakSigPub(sigPub){
   if(sigPub.length !== 32) return true;
-  return ED_WEAK.has(Array.from(sigPub, x => x.toString(16).padStart(2,'0')).join(''));
+  try{
+    const hex = Array.from(sigPub, x => x.toString(16).padStart(2,'0')).join('');
+    return PQ.ed25519.Point.fromHex(hex).isSmallOrder();
+  }catch(e){
+    return true;   /* не декодируется как точка кривой — тоже отвергаем */
+  }
 }
 function assertGoodSender(sigPub){
   if(isWeakSigPub(sigPub)){ const e = new Error('weakkey'); e.weakkey = true; throw e; }
@@ -2469,12 +2466,20 @@ function setPrivVisible(show){
 privToggle.addEventListener('click', () => setPrivVisible(myPriv.type === 'password'));
 
 async function showFingerprints(myId, theirOpt, listOpt){
+  /* Панель отпечатков — якорь доверия: по ней человек сверяет, кому ушло письмо.
+     Две перекрывшиеся операции шифрования могли обмануть её: пока первая (к R1)
+     ждала внутри fingerprint(), вторая (к R2) успевала завершиться и вписать в
+     поле шифр для R2, а затем первая возвращалась и перерисовывала панель
+     отпечатком R1. Выходило: шифр для R2, а панель уверяет, что для R1.
+     Поэтому фиксируем эпоху операции и не трогаем панель, если она устарела. */
+  const epoch = opEpoch;
   let html = '';
   if(myId){ html += '<span class="tag">' + L().fpMine + '</span><b>' + await fingerprint(myId.sigPub) + '</b>'; }
   if(listOpt && listOpt.length > 1){
     const fps = [];
     for(const one of listOpt) fps.push(await fingerprint(one.sigPub));
     html += (html ? '  ·  ' : '') + '<span class="tag">' + L().fpTheir + '</span><b>' + fps.join(' , ') + '</b>';
+    if(epoch !== opEpoch) return;
     fpLine.innerHTML = html;
     fpLine.className = 'fp keys-only' + (listOpt.some(x => x.bound === false) ? ' warn' : '');
     return;
@@ -2486,6 +2491,7 @@ async function showFingerprints(myId, theirOpt, listOpt){
        только в статусе, который к этому моменту уже прочитан и забыт. */
     if(theirOpt.bound === false) html += '<span class="tag">' + L().fpUnbound + '</span>';
   }
+  if(epoch !== opEpoch) return;
   fpLine.innerHTML = html;
   fpLine.className = 'fp keys-only' + (theirOpt && theirOpt.bound === false ? ' warn' : '');
 }
@@ -3415,11 +3421,13 @@ async function runSelfTest(){
      Обязаны отвергаться и как публичный ключ, и как отправитель. */
   {
     const weak = [
-      '0100000000000000000000000000000000000000000000000000000000000000',
+      '0100000000000000000000000000000000000000000000000000000000000000',  /* identity */
       '0000000000000000000000000000000000000000000000000000000000000000',
-      'ecffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff',
-      'edffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff',
+      '0000000000000000000000000000000000000000000000000000000000000080',
+      'ecffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff7f',
       'c7176a703d4dd84fba3c0b760d10670f2a2053fa2c39ccc64ec7fd7792ac037a',
+      '26e8958fc2b227b045c3f489f2ef98f0d5dfac05d3c63339b13802886d53fc05',  /* эти две */
+      '26e8958fc2b227b045c3f489f2ef98f0d5dfac05d3c63339b13802886d53fc85',  /* я пропускал */
     ].map(h => { const a = new Uint8Array(32); for(let i=0;i<32;i++) a[i]=parseInt(h.substr(i*2,2),16); return a; });
     let allRejected = true;
     for(const wp of weak){
