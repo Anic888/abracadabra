@@ -85,11 +85,16 @@ Each side presses `[ GENERATE ]` **once**: you get a private key (`ABRAKPRV…`,
 
 | Format | Key derivation | Cipher | Extras |
 |---|---|---|---|
-| `ABRA2.` (current) | Argon2id · 64 MiB · t=3 (PBKDF2×1.2M fallback) | AES-256-GCM ⊕ ChaCha20 cascade | bucket padding, NFC-normalized passwords |
-| `ABRAK.` (keys) | X-Wing = ML-KEM-768 + X25519 → HKDF | same cascade | Ed25519 sender signature, fingerprints |
+| `ABRA2.` (password) | Argon2id · 64 MiB · t=3, or 256 MiB · t=4 on the paranoid profile | AES-256-GCM ⊕ ChaCha20 cascade | KDF parameters recorded in the header, bucket padding, NFC-normalized passwords |
+| `ABRAK.` (keys, v2) | X-Wing = ML-KEM-768 + X25519 → HKDF, **sender bound into the key** | same cascade | Ed25519 sender signature, fingerprints |
+| `ABRAM.` (keys, many) | one random key per message, wrapped separately per recipient | same cascade | up to 32 recipients, recipient list not recoverable from the message |
+| `.abra` v2 (files) | as above, per container | framed: 4 MiB frames, each AEAD-sealed | signature over a SHA-256 chain of frames, key commitment, true length encrypted |
 | `ABRA1.` (legacy) | PBKDF2-SHA-256 · 600k | AES-256-GCM | still decrypts, no longer produced |
+| `ABRAK.` v1, `.abra` v1 | legacy | legacy | still decrypt, **but their sender can be forged** — the app says so and never shows them as verified |
 
-All formats stay readable in newer versions. UI language never affects compatibility.
+Older formats stay readable. **New ones do not go backwards:** ciphertexts and
+containers written by 5.1 need 5.1 or newer on both ends, and public keys must be
+regenerated once — see [CHANGELOG.md](CHANGELOG.md).
 
 ### What it protects against — and what it doesn't
 
@@ -101,10 +106,23 @@ All formats stay readable in newer versions. UI language never affects compatibi
 
 ### Verification
 
-- ML-KEM-768/X-Wing implementation ([noble-post-quantum](https://github.com/paulmillr/noble-post-quantum)) is checked byte-for-byte against the official IETF/NIST test vectors (10/10).
-- The embedded ChaCha20 was verified against OpenSSL's native implementation (33 randomized cases + RFC 8439 vector).
-- 26 automated browser tests cover round-trips, tampering, wrong keys, impostor detection, legacy formats and cross-language compatibility.
-- The file is self-auditable: open `index.html` in an editor. Application code is readable and commented; vendored crypto libraries are embedded minified with sources linked below.
+- **Press `[ SELF-TEST ]` at the bottom of the app.** It runs 77 checks in about
+  12 seconds, in your own browser: published vectors for ChaCha20 (RFC 8439 §2.4.2),
+  Argon2id (RFC 9106 §5.3), X-Wing and Ed25519; ciphertexts produced by version 5.0;
+  and forgery attempts that must each be rejected. If your browser computes something
+  wrong, you find out before you trust the tool with something that matters.
+- **Open devtools → Network and use the app.** There should be no requests. This is
+  enforced by the page's own `Content-Security-Policy` (`connect-src 'none'`), not by
+  a promise: measured against a local server, of thirteen exfiltration channels
+  (fetch, XHR, sendBeacon, images, CSS, script, iframe, prefetch, object, video,
+  WebSocket, EventSource, form submission) all thirteen are blocked.
+- **Read the code.** Open `index.html` in an editor — the application code is readable
+  and commented; vendored crypto libraries are embedded minified with sources linked below.
+- Threat model and honest limits: **[SECURITY.md](SECURITY.md)**.
+
+The design review, the pentest suite (45 executable exploits), the known-answer
+vectors and the previous build kept for regression testing are all retained
+privately, not published — running attack code is not something to hand out.
 
 ---
 
