@@ -3267,7 +3267,21 @@ async function readContainer(file, hdr, master, label, epoch){
     }
     if(i === frames - 1 && overflow > 0){
       if(overflow > plain.length) throw new Error('inner');
-      plain = plain.subarray(0, plain.length - overflow);
+      /* Хвост добивки обязан быть нулевым — ровно та же проверка, что в unpad()
+         для текста, и по той же причине: свободные байты внутри аутентифицированных
+         данных дают владельцу ключа площадку, где можно подогнать коллизию
+         GCM-тега. Пока проверки здесь не было, файловый путь молча срезал ЛЮБОЙ
+         хвост: отправитель клал в него что угодно, у получателя открывался
+         тот же безобидный файл без единой ошибки — скрытый канал (сотни байт на
+         контейнер), а в режиме ключей ещё и под зелёной подписью «отправитель
+         подтверждён». Побочно это делало шифровку неуникальной: множество
+         байт-разных контейнеров давали один и тот же файл, что ломает опознание
+         контейнера по хешу. Настоящие контейнеры всегда нулевые в хвосте
+         (innerReader за концом файла отдаёт нули), поэтому старые файлы читаются
+         по-прежнему. */
+      const tailStart = plain.length - overflow;
+      for(let j = tailStart; j < plain.length; j++) if(plain[j] !== 0) throw new Error('pad');
+      plain = plain.subarray(0, tailStart);
     }
     parts.push(new Blob([plain]));
     wipe(inner);
@@ -3648,6 +3662,35 @@ async function runSelfTest(){
     /* В заголовке лежит длина ПОСЛЕ добивания, а не настоящая: иначе корзины
        перестают что-либо скрывать, и для маленького файла размер виден точно. */
     ok('файл/длина-не-в-заголовке', isLegalBucket(hdr.paddedLen) && hdr.paddedLen !== 6 + nb.length + data.length);
+    /* Хвост добивки обязан быть нулевым (как unpad() для текста). Пока проверки
+       не было, отправитель прятал в нём сотни байт: получатель видел тот же файл
+       без ошибки, а в режиме ключей — ещё и под подтверждённой подписью. Здесь
+       собираем контейнер вручную с НЕнулевым хвостом и требуем отказа. */
+    await throws('файл/ненулевая-добивка-отказ', async () => {
+      const m = crypto.getRandomValues(new Uint8Array(32));
+      const s2 = crypto.getRandomValues(new Uint8Array(16));
+      const small = new Uint8Array([1,2,3]);
+      const b2 = await writeContainer({ mode:1, master:m, salt:s2, kdf:2, profile:null },
+                                      new File([small],'n'), enc.encode('n.bin'), '', opEpoch);
+      const r2 = new Uint8Array(await b2.arrayBuffer());
+      const h2 = await parseContainerHeader(new File([r2],'x.abra'));
+      const K = await framedKeys(m, FILE_INFO_P, h2.salt, h2.headerCore);
+      const hh = await sha256(h2.header);
+      const ctLen = Math.min(FRAME, h2.paddedLen) + 16;
+      const ct = r2.slice(h2.headerLen, h2.headerLen + ctLen);
+      const kd = await crypto.subtle.importKey('raw', K.kAes, { name:'AES-GCM' }, false, ['decrypt']);
+      const innerP = new Uint8Array(await crypto.subtle.decrypt(
+        { name:'AES-GCM', iv: concatBytes(K.ivBase, u32be(0)), additionalData: frameAad(hh, 0, true) }, kd, ct));
+      const p = chacha20Xor(K.kCha, concatBytes(K.nBase, u32be(0)), innerP);
+      p[rdU32be(p, 0) + 1] = 0x41;                       /* мусор в хвосте добивки */
+      const innerB = chacha20Xor(K.kCha, concatBytes(K.nBase, u32be(0)), p);
+      const ke = await crypto.subtle.importKey('raw', K.kAes, { name:'AES-GCM' }, false, ['encrypt']);
+      const ctB = new Uint8Array(await crypto.subtle.encrypt(
+        { name:'AES-GCM', iv: concatBytes(K.ivBase, u32be(0)), additionalData: frameAad(hh, 0, true) }, ke, innerB));
+      const rebuilt = concatBytes(h2.header, ctB);
+      const cf2 = new File([rebuilt], 'y.abra');
+      await readContainer(cf2, await parseContainerHeader(cf2), m, '', opEpoch);
+    });
 
     const raw = new Uint8Array(await blob.arrayBuffer());
     await throws('файл/правка-шифртекста', async () => {
