@@ -1129,6 +1129,7 @@ ru: {
   stDenNoPass:'ОШИБКА: НУЖЕН СКРЫТЫЙ ПАРОЛЬ — ИЛИ ВЫКЛЮЧИТЕ СКРЫТЫЙ ТОМ',
   stDenNoText:'ОШИБКА: НУЖНО СКРЫТОЕ СООБЩЕНИЕ — ИЛИ ВЫКЛЮЧИТЕ СКРЫТЫЙ ТОМ',
   stDenSamePass:'ОШИБКА: СКРЫТЫЙ ПАРОЛЬ ДОЛЖЕН ОТЛИЧАТЬСЯ ОТ ПАРОЛЯ ПРИКРЫТИЯ',
+  stDenHiddenLong:'ОШИБКА: ТАЙНИК ДЛИННЕЕ ПРИКРЫТИЯ — УДЛИНИТЕ ПРИКРЫТИЕ ИЛИ СОКРАТИТЕ ТАЙНИК (ИНАЧЕ РАЗМЕР ВЫДАСТ ТАЙНИК)',
   stDenEncOk:'OK // ДВА СЛОЯ В ОДНОЙ ШИФРОВКЕ. ПАРОЛЬ ПРИКРЫТИЯ — БЕЗОБИДНЫЙ ТЕКСТ, СКРЫТЫЙ — НАСТОЯЩИЙ',
   docSum:'Документация // как пользоваться',
   help:`<h4>Режим «Пароль»</h4>
@@ -1272,6 +1273,7 @@ en: {
   stDenNoPass:'ERROR: NEED A HIDDEN PASSWORD — OR TURN OFF THE HIDDEN VOLUME',
   stDenNoText:'ERROR: NEED A HIDDEN MESSAGE — OR TURN OFF THE HIDDEN VOLUME',
   stDenSamePass:'ERROR: THE HIDDEN PASSWORD MUST DIFFER FROM THE COVER PASSWORD',
+  stDenHiddenLong:'ERROR: HIDDEN MESSAGE IS LONGER THAN THE COVER — LENGTHEN THE COVER OR SHORTEN THE SECRET (ELSE THE SIZE BETRAYS IT)',
   stDenEncOk:'OK // TWO LAYERS IN ONE CIPHERTEXT. COVER PASSWORD -> HARMLESS TEXT, HIDDEN PASSWORD -> THE REAL ONE',
   docSum:'Documentation // how to use',
   help:`<h4>Password mode</h4>
@@ -1415,6 +1417,7 @@ zh: {
   stDenNoPass:'错误：需要隐藏口令——或关闭隐藏卷',
   stDenNoText:'错误：需要隐藏消息——或关闭隐藏卷',
   stDenSamePass:'错误：隐藏口令必须与掩护口令不同',
+  stDenHiddenLong:'错误：隐藏消息比掩护文本长——请加长掩护或缩短秘密（否则大小会暴露隐藏卷）',
   stDenEncOk:'OK // 一份密文两层。掩护口令→无害文本，隐藏口令→真实内容',
   docSum:'文档 // 使用说明',
   help:`<h4>口令模式</h4>
@@ -1558,6 +1561,7 @@ es: {
   stDenNoPass:'ERROR: HACE FALTA UNA CONTRASEÑA OCULTA — O DESACTIVA EL VOLUMEN OCULTO',
   stDenNoText:'ERROR: HACE FALTA UN MENSAJE OCULTO — O DESACTIVA EL VOLUMEN OCULTO',
   stDenSamePass:'ERROR: LA CONTRASEÑA OCULTA DEBE DIFERIR DE LA DE TAPADERA',
+  stDenHiddenLong:'ERROR: EL MENSAJE OCULTO ES MÁS LARGO QUE LA TAPADERA — ALARGA LA TAPADERA O ACORTA EL SECRETO (SI NO, EL TAMAÑO LO DELATA)',
   stDenEncOk:'OK // DOS CAPAS EN UN CIFRADO. CONTRASEÑA DE TAPADERA -> TEXTO INOFENSIVO, OCULTA -> EL REAL',
   docSum:'Documentación // cómo usar',
   help:`<h4>Modo contraseña</h4>
@@ -2057,7 +2061,16 @@ async function cascadeDecryptFixed(master, body){
    (слот B, необязательно). Профиль KDF один на весь контейнер. */
 async function encryptDeniable(decoyText, decoyPass, realText, realPass, profOpt){
   const a = enc.encode(decoyText), b = realText ? enc.encode(realText) : new Uint8Array(0);
-  const innerLen = bucketOf(Math.max(a.length, b.length) + 4);   /* общая корзина обоих */
+  /* Размер корзины задаёт ТОЛЬКО прикрытие. Тогда длина контейнера полностью
+     объясняется прикрытием, которое допрашивающий и так прочтёт по его паролю —
+     и тайник по размеру не выдаётся. Раньше корзину брали как max(прикрытие,
+     тайник): если тайник длиннее, innerLen (он открытый!) рос, и держатель
+     одного пароля-прикрытия ДОКАЗЫВАЛ, что внутри спрятано больше, чем он видит.
+     Цена — тайник обязан помещаться в корзину прикрытия (как в любом скрытом
+     томе: легенда должна правдоподобно объяснять размер). */
+  const innerLen = bucketOf(a.length + 4);
+  if(b.length + 4 > innerLen){ const e = new Error('hidden-too-long'); e.hiddenTooLong = true;
+    e.need = b.length; e.have = innerLen - 4; throw e; }
 
   const saltA = crypto.getRandomValues(new Uint8Array(16));
   const A = await masterForEncrypt(decoyPass, saltA, profOpt);
@@ -2065,14 +2078,37 @@ async function encryptDeniable(decoyText, decoyPass, realText, realPass, profOpt
   wipe(A.master);
 
   const saltB = crypto.getRandomValues(new Uint8Array(16));
+  /* Слот B выводим ТЕМ ЖЕ (kdf, profile), что заголовок записал от слота A, и
+     именно через masterForDecrypt — ту самую функцию, которой пойдёт расшифровка.
+     Заголовок хранит ОДИН KDF на весь контейнер; раньше слот B бежал своей
+     лестницей masterForEncrypt, и при переходном сбое Argon2 слот A оседал на
+     PBKDF2 (kdf=2 в заголовке), а слот B успевал посчитаться Argon-ом. На
+     расшифровке обоим слотам применялся PBKDF2 из заголовка — и настоящий тайник
+     не открывался НИКОГДА: тихая безвозвратная потеря. Теперь оба слота и
+     заголовок согласованы по построению. */
   let ctB;
   if(realText && realPass){
-    const B = await masterForEncrypt(realPass, saltB, A.profile || profOpt);
-    ctB = await cascadeEncryptFixed(B.master, b, innerLen);
-    wipe(B.master);
+    const mB = await masterForDecrypt(realPass, saltB, A.kdf, A.profile);
+    ctB = await cascadeEncryptFixed(mB, b, innerLen);
+    wipe(mB);
   }else{
-    /* второго сообщения нет — слот B чисто случайный, неотличим от каскада */
-    ctB = crypto.getRandomValues(new Uint8Array(innerLen + 16));
+    /* Второго сообщения нет. Слот B — НАСТОЯЩИЙ каскад под одноразовым случайным
+       мастером того же KDF, а не просто getRandomValues. Причины: (1) выход
+       AES-GCM и чистый рандом статистически неотличимы, но каскад снимает лимит
+       getRandomValues в 64 КиБ — без него большой decoy-only контейнер падал с
+       QuotaExceededError, и по одному этому факту (не создаётся) тайник выдавался;
+       (2) второй проход KDF уравнивает ВРЕМЯ создания decoy-only и контейнера с
+       тайником — иначе наблюдающий за шифрованием считал бы слои по секундомеру;
+       (3) мастер случайный и тут же стирается — ни один пароль его не выведет,
+       так что слот B под любым паролем не откроется. Каскад покрывает всю корзину
+       (нулевой хвост padFixed превращается в чистый keystream), поэтому случайного
+       «сырья» нужно всего 32 байта. */
+    const junkPass = b64encode(crypto.getRandomValues(new Uint8Array(32)));
+    let junkMaster;
+    try{ junkMaster = await masterForDecrypt(junkPass, saltB, A.kdf, A.profile); }
+    catch(e){ junkMaster = crypto.getRandomValues(new Uint8Array(32)); }  /* KDF недоступен — не блокируем decoy-only */
+    ctB = await cascadeEncryptFixed(junkMaster, crypto.getRandomValues(new Uint8Array(32)), innerLen);
+    wipe(junkMaster);
   }
   const header = buildPassHeader(saltA, A.kdf, A.profile);   /* соль А + профиль */
   return MAGICD + b64encode(concatBytes(
@@ -2529,9 +2565,14 @@ async function doEncrypt(){
       const cipher = await encryptDeniable(text, password.value, denInput.value, denPass.value);
       if(epoch !== opEpoch) return;
       showResult(cipher, true);
-      if(srcWipeOn){ input.value = ''; denInput.value = ''; }
+      /* Стирание источника должно уносить и ПАРОЛЬ ТАЙНИКА: раньше чистились
+         input и denInput, а denPass оставался в DOM — на изъятом устройстве
+         скрытый пароль лежал открытым в поле, обесценивая весь тайник. */
+      if(srcWipeOn){ input.value = ''; denInput.value = ''; denPass.value = ''; setDenVisible(false); }
       setStatus('stDenEncOk', 'ok', srcWipeOn ? L().stSrcWiped : '');
-    }catch(e){ showResult('', false); if(!handleKdfError(e)) setStatus('stEncFail', 'err', (e && e.message ? e.message : String(e))); }
+    }catch(e){ showResult('', false);
+      if(e && e.hiddenTooLong){ setStatus('stDenHiddenLong', 'err', ' (' + e.need + '→' + e.have + ')'); denInput.focus(); }
+      else if(!handleKdfError(e)) setStatus('stEncFail', 'err', (e && e.message ? e.message : String(e))); }
     finally{ setBusy(false, encryptBtn); }
     return;
   }
@@ -3693,6 +3734,24 @@ async function runSelfTest(){
     ok('скрытый/размер-не-выдаёт', cont.length === only.length);
     ok('скрытый/пустой-без-фантома', (await decryptDeniable(only, 'passA')).plain === 'прикрытие');
     await throws('скрытый/пустой-нет-тайника', () => decryptDeniable(only, 'что-угодно'));
+    /* Утечка размера (найдена пентестом): корзину задаёт ТОЛЬКО прикрытие, иначе
+       длинный тайник раздувал открытый innerLen и держатель пароля-прикрытия
+       доказывал, что внутри спрятано больше видимого. */
+    {
+      const slotLenOf = c => { const d=b64decode(c.slice(MAGICD.length)); return rdU32be(d, readPassHeader(d,0).bodyOff); };
+      /* короткое прикрытие: контейнер с влезающим тайником и без него — байт-в-байт одной длины и slotLen */
+      const shortCover = 'ок';
+      const withHidden = await encryptDeniable(shortCover, 'passA', 'секрет', 'passB', CH);
+      const noHidden   = await encryptDeniable(shortCover, 'passA', '', '', CH);
+      ok('скрытый/размер-от-прикрытия', withHidden.length === noHidden.length);
+      ok('скрытый/slotLen-от-прикрытия', slotLenOf(withHidden) === slotLenOf(noHidden));
+      /* тайник длиннее корзины прикрытия обязан быть ОТВЕРГНУТ, а не выдать размером */
+      await throws('скрытый/длинный-тайник-отказ',
+        () => encryptDeniable('ок', 'passA', 'X'.repeat(5000), 'passB', CH), e => e.hiddenTooLong);
+      /* большой decoy-only контейнер БОЛЬШЕ не падает на getRandomValues>64КиБ */
+      const big = await encryptDeniable('D'.repeat(70000), 'passA', '', '', CH);
+      ok('скрытый/большой-decoy-не-падает', (await decryptDeniable(big, 'passA')).plain.length === 70000);
+    }
     /* второй слот случайного контейнера неотличим (высокая энтропия) */
     {
       const d = b64decode(only.slice(MAGICD.length)); const h = readPassHeader(d, 0);
