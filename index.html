@@ -1102,6 +1102,8 @@ ru: {
   stFileOneRecip:'ФАЙЛ ШИФРУЕТСЯ ОДНОМУ ПОЛУЧАТЕЛЮ — ОСТАВЬТЕ В ПОЛЕ ОДИН ПУБЛИЧНЫЙ КЛЮЧ',
   stLegacySender:'⚠ СТАРЫЙ ФОРМАТ — ОТПРАВИТЕЛЯ В НЁМ МОЖНО ПОДДЕЛАТЬ, ОТПЕЧАТОК НИЧЕГО НЕ ДОКАЗЫВАЕТ: ',
   stEncOkReduced:'ГОТОВО. УСТРОЙСТВУ НЕ ХВАТИЛО ПАМЯТИ НА ПОЛНЫЙ ARGON2ID, ВЗЯЛ ВДВОЕ ЛЕГЧЕ — ЗАЩИТА ВСЁ РАВНО СИЛЬНАЯ, НО ПАРОЛЬ ЛУЧШЕ ПОДЛИННЕЕ',
+  stWeakKey:'ОТКАЗ: КЛЮЧ ПОДПИСИ — «СЛАБАЯ» ТОЧКА, ТАКИЕ КЛЮЧИ ПОДДЕЛЬНЫ. ЭТО НЕ НАСТОЯЩИЙ КЛЮЧ',
+  stEmptyPass:'ОШИБКА: ПАРОЛЬ ПУСТОЙ. ПРОБЕЛЫ НЕ СЧИТАЮТСЯ — ВВЕДИТЕ НАСТОЯЩИЙ ПАРОЛЬ ИЛИ НАЖМИТЕ [ СЛУЧАЙНЫЙ ]',
   docSum:'Документация // как пользоваться',
   help:`<h4>Режим «Пароль»</h4>
 <ol>
@@ -1229,6 +1231,8 @@ en: {
   stFileOneRecip:'A FILE IS ENCRYPTED TO ONE RECIPIENT — LEAVE A SINGLE PUBLIC KEY IN THE FIELD',
   stLegacySender:'⚠ LEGACY FORMAT — THE SENDER IN IT CAN BE FORGED, SO THIS FINGERPRINT PROVES NOTHING: ',
   stEncOkReduced:'DONE. THIS DEVICE COULD NOT SPARE THE MEMORY FOR FULL ARGON2ID, SO A LIGHTER SETTING WAS USED — STILL STRONG, BUT PREFER A LONGER PASSWORD',
+  stWeakKey:'REJECTED: THE SIGNING KEY IS A WEAK (LOW-ORDER) POINT — SUCH KEYS ARE FORGEABLE, THIS IS NOT A REAL KEY',
+  stEmptyPass:'ERROR: THE PASSWORD IS EMPTY. WHITESPACE DOES NOT COUNT — ENTER A REAL PASSWORD OR PRESS [ RANDOM ]',
   docSum:'Documentation // how to use',
   help:`<h4>Password mode</h4>
 <ol>
@@ -1356,6 +1360,8 @@ zh: {
   stFileOneRecip:'文件只加密给一个收件人——请在字段中只保留一个公钥',
   stLegacySender:'⚠ 旧格式——其中的发送方可被伪造，此指纹不能证明任何事：',
   stEncOkReduced:'已完成。本设备内存不足以运行完整的 ARGON2ID，已改用较轻的档位——强度依然可靠，但建议用更长的口令',
+  stWeakKey:'拒绝：签名密钥是「弱」（低阶）点，这类密钥可被伪造，这不是真实的密钥',
+  stEmptyPass:'错误：口令为空。空白字符不算——请输入真正的口令或点击 [ 随机 ]',
   docSum:'文档 // 使用说明',
   help:`<h4>口令模式</h4>
 <ol>
@@ -1483,6 +1489,8 @@ es: {
   stFileOneRecip:'UN ARCHIVO SE CIFRA A UN SOLO DESTINATARIO — DEJA UNA ÚNICA CLAVE PÚBLICA EN EL CAMPO',
   stLegacySender:'⚠ FORMATO ANTIGUO — EL REMITENTE EN ÉL SE PUEDE FALSIFICAR, ESTA HUELLA NO PRUEBA NADA: ',
   stEncOkReduced:'HECHO. ESTE DISPOSITIVO NO PUDO RESERVAR MEMORIA PARA EL ARGON2ID COMPLETO Y SE USÓ UN AJUSTE MÁS LIGERO — SIGUE SIENDO FUERTE, PERO USA UNA CONTRASEÑA MÁS LARGA',
+  stWeakKey:'RECHAZADO: LA CLAVE DE FIRMA ES UN PUNTO DÉBIL (DE ORDEN BAJO) — ESAS CLAVES SON FALSIFICABLES, NO ES UNA CLAVE REAL',
+  stEmptyPass:'ERROR: LA CONTRASEÑA ESTÁ VACÍA. LOS ESPACIOS NO CUENTAN — INTRODUCE UNA CONTRASEÑA REAL O PULSA [ ALEATORIA ]',
   docSum:'Documentación // cómo usar',
   help:`<h4>Modo contraseña</h4>
 <ol>
@@ -1578,7 +1586,18 @@ function bytesEq(a, b){
 async function sha256(bytes){ return new Uint8Array(await crypto.subtle.digest('SHA-256', bytes)); }
 
 /* ═══════════ КРИПТОГРАФИЯ (общее) ═══════════ */
+/* NFC — чтобы «é» одним кодом и «e»+акцент были одним паролем. trim() убирает
+   случайные пробелы по краям (частая ошибка копипаста). Но trim срезает и
+   неразрывный пробел, и идеографический, и BOM — поэтому пароль из ОДНИХ
+   пробелов схлопывается в пустую строку. Проверка «пароль не пустой» смотрела на
+   сырой ввод и такой пароль пропускала: человек думал, что задал ключ, а ключ
+   выходил пустой. Поэтому пустоту проверяем ПОСЛЕ нормализации. */
 const normPass = p => p.normalize('NFC').trim();
+function requirePass(pass){
+  const p = normPass(pass);
+  if(p === ''){ const e = new Error('emptypass'); e.emptyPass = true; throw e; }
+  return p;
+}
 
 /* Домашнее правило: DataView всегда получает byteOffset И byteLength. Без них
    вид над subarray молча смотрит не туда — это самая дешёвая порча данных. */
@@ -1847,29 +1866,34 @@ async function pbkdf2bits(pass, salt, iters){
    сильнее PBKDF2, а телефон, которому не хватило 256, обычно тянет 64. */
 let kdfReduced = false;
 async function masterForEncrypt(pass, salt, profOpt){
-  const p = normPass(pass);
+  const p = requirePass(pass);            /* пустой (в т.ч. из одних пробелов) — отказ */
   const ladder = profOpt ? [profOpt] : [A2_HARD, A2];
-  if(argonOk !== false){
-    for(let i = 0; i < ladder.length; i++){
-      const prof = ladder[i];
-      try{
-        const m = await argonMaster(p, salt, prof);
-        argonOk = true;
-        kdfReduced = !profOpt && i > 0;   /* пришлось спуститься — скажем об этом */
-        updKdfReadout();
-        return { master:m, kdf:kdfByteFor(prof), profile:prof };
-      }catch(e){
-        /* память освобождаем перед следующей попыткой: модуль запоминает размер
-           кучи с первого запуска и дальше только пытается её нарастить */
-        try{ if(typeof argon2 !== 'undefined' && argon2.unloadRuntime) argon2.unloadRuntime(); }catch(_){}
-        killArgonWorker();
-      }
+  /* argonOk — это только индикатор «в прошлый раз получилось», НЕ защёлка.
+     Раньше `if(argonOk !== false)` пропускал всю лестницу после единственной
+     осечки, и весь сеанс молча уезжал на PBKDF2, даже когда память освободилась.
+     Теперь лестницу пробуем ВСЕГДА: одна временная неудача больше не липнет. */
+  for(let i = 0; i < ladder.length; i++){
+    const prof = ladder[i];
+    try{
+      const m = await argonMaster(p, salt, prof);
+      argonOk = true;
+      kdfReduced = !profOpt && i > 0;   /* пришлось спуститься — скажем об этом */
+      updKdfReadout();
+      return { master:m, kdf:kdfByteFor(prof), profile:prof };
+    }catch(e){
+      /* память освобождаем перед следующей попыткой: модуль запоминает размер
+         кучи с первого запуска и дальше только пытается её нарастить */
+      try{ if(typeof argon2 !== 'undefined' && argon2.unloadRuntime) argon2.unloadRuntime(); }catch(_){}
+      killArgonWorker();
     }
-    argonOk = false; updKdfReadout();
   }
+  argonOk = false; updKdfReadout();
   /* Понижение до PBKDF2 против GPU на порядки слабее Argon2id, поэтому оно
-     требует отдельного осознанного подтверждения, а не мелкой надписи в шапке. */
+     требует отдельного осознанного подтверждения. Согласие ОДНОРАЗОВОЕ: раньше
+     флаг залипал, и следующее, ни с чем не связанное письмо шифровалось слабым
+     KDF уже без предупреждения. Сбрасываем сразу после использования. */
   if(!pbkdf2Ack){ const e = new Error('confirm-pbkdf2'); e.needsPbkdf2Ack = true; throw e; }
+  pbkdf2Ack = false; pbkdf2Pending = false;
   return { master: await pbkdf2bits(p, salt, PBKDF2_FB), kdf:2, profile:null };
 }
 async function masterForDecrypt(pass, salt, kdf, profile){
@@ -1937,6 +1961,29 @@ const BIND_CTX = 'abracadabra/v1/pubkey';
 function bindPreimage(ver, sigPub, kemPub){
   return concatBytes(enc.encode(BIND_CTX), new Uint8Array([ver]), sigPub, kemPub);
 }
+/* У Ed25519 есть 8 «слабых» точек малого порядка (включая нулевую): для них
+   нулевая подпись сходится с ЛЮБЫМ сообщением. Сам по себе такой ключ никого не
+   выдаёт — его отпечаток ни с кем не совпадёт, — но принимать его как чей-то
+   ключ подписи нельзя: это открытая дверь. Отвергаем весь список, как libsodium
+   и Signal. Восемь точек — просто сравнение байтов, дёшево. */
+const ED_WEAK = new Set([
+  '0100000000000000000000000000000000000000000000000000000000000000',
+  '0000000000000000000000000000000000000000000000000000000000000000',
+  '0000000000000000000000000000000000000000000000000000000000000080',
+  'ecffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff',
+  'ecffffffffffffffffffffffffffffffffffffffffffffffffffffffffff7f'.padEnd(64,'f'),
+  'ecffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff7f',
+  'edffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff',
+  'c7176a703d4dd84fba3c0b760d10670f2a2053fa2c39ccc64ec7fd7792ac037a',
+  'c7176a703d4dd84fba3c0b760d10670f2a2053fa2c39ccc64ec7fd7792ac03fa',
+]);
+function isWeakSigPub(sigPub){
+  if(sigPub.length !== 32) return true;
+  return ED_WEAK.has(Array.from(sigPub, x => x.toString(16).padStart(2,'0')).join(''));
+}
+function assertGoodSender(sigPub){
+  if(isWeakSigPub(sigPub)){ const e = new Error('weakkey'); e.weakkey = true; throw e; }
+}
 function exportPub(id){
   const sig = PQ.ed25519.sign(bindPreimage(PUB_V2, id.sigPub, id.kemPub), id.sigSec);
   return PUBPFX + b64encode(concatBytes(new Uint8Array([PUB_V2]), id.kemPub, id.sigPub, sig));
@@ -1954,6 +2001,7 @@ function parsePub(str){
   const data = b64decode(m.slice(PUBPFX.length).replace(/\s+/g, ''));
   if(data.length === 1313 && data[0] === PUB_V2){
     const kemPub = data.slice(1, 1217), sigPub = data.slice(1217, 1249), sig = data.slice(1249);
+    if(isWeakSigPub(sigPub)){ const e = new Error('weakkey'); e.weakkey = true; throw e; }
     /* отдельная ошибка: «подпись внутри ключа не сошлась» — это не опечатка при
        вставке, а признак подмены, и звучать должно иначе */
     if(!PQ.ed25519.verify(sig, bindPreimage(PUB_V2, sigPub, kemPub), sigPub)){
@@ -1964,7 +2012,11 @@ function parsePub(str){
   /* Ключ старого образца. Читаем — чтобы можно было проверить подпись под
      старыми письмами, — но шифровать на него отказываемся: иначе посреднику
      достаточно отрезать привязку, и дыра открывается заново. */
-  if(data.length === 1248) return { kemPub: data.slice(0,1216), sigPub: data.slice(1216,1248), bound:false };
+  if(data.length === 1248){
+    const sigPub = data.slice(1216,1248);
+    if(isWeakSigPub(sigPub)){ const e = new Error('weakkey'); e.weakkey = true; throw e; }
+    return { kemPub: data.slice(0,1216), sigPub, bound:false };
+  }
   throw new Error('badpub');
 }
 /* короткий отпечаток по ключу подписи — для сверки голосом */
@@ -2013,6 +2065,9 @@ async function abrakDecrypt(compact, myId, theirPubOpt){
   if(ver !== 1 && ver !== 2){ const e = new Error('badver'); e.badver = true; throw e; }
   const kemCt = data.slice(1, 1+KEMCT);
   const senderSigPub = data.slice(1+KEMCT, HEAD);
+  /* «слабый» ключ подписи отправителя отвергаем до проверки подписи: под ним
+     нулевая подпись сходится с чем угодно */
+  assertGoodSender(senderSigPub);
   const body = data.slice(HEAD, data.length - SIG);
   const sig = data.slice(data.length - SIG);
   const recipHash = await sha256(myId.kemPub);
@@ -2105,6 +2160,7 @@ async function abramDecrypt(compact, myId, theirPubOpt){
   const headLen = 2 + 32 + n * SLOT;
   if(data.length < headLen + SIG + 16) throw new Error('short');
   const senderSigPub = data.slice(2, 34);
+  assertGoodSender(senderSigPub);   /* «слабый» ключ отправителя — до проверки подписи */
   const head = data.slice(0, headLen);
   const body = data.slice(headLen, data.length - SIG);
   const sig = data.slice(data.length - SIG);
@@ -2201,6 +2257,7 @@ function setDeterminate(label, pct){
    ошибка обработана, чтобы вызывающий не показал поверх неё общее «отказ». */
 function handleKdfError(e){
   if(!e) return false;
+  if(e.emptyPass){ setStatus('stEmptyPass', 'err'); return true; }
   if(e.needsPbkdf2Ack){ pbkdf2Pending = true; setStatus('stPbkdf2Ask', 'err'); return true; }
   if(e.paranoidFail){ setStatus('stParanoidFail', 'err'); return true; }
   if(e.badparams){ setStatus('stBadParams', 'err'); return true; }
@@ -2255,7 +2312,7 @@ function parseTheirForEncrypt(){
   if(!theirPub.value.trim()){ setStatus('stNoTheir', 'err'); theirPub.focus(); return null; }
   let list;
   try{ list = parsePubAll(theirPub.value); }
-  catch(e){ setStatus(e && e.badbind ? 'stBadBind' : 'stBadPub', 'err'); theirPub.focus(); return null; }
+  catch(e){ setStatus(e && e.weakkey ? 'stWeakKey' : e && e.badbind ? 'stBadBind' : 'stBadPub', 'err'); theirPub.focus(); return null; }
   if(!list.length){ setStatus('stBadPub', 'err'); theirPub.focus(); return null; }
   if(list.length > MULTI_MAX){ setStatus('stTooManyRecip', 'err'); theirPub.focus(); return null; }
   if(list.some(x => !x.bound)){ setStatus('stUnboundKey', 'err'); theirPub.focus(); return null; }
@@ -2439,8 +2496,10 @@ async function refreshKeyFingerprints(){
   /* раньше здесь глотали любую ошибку — ключ с несошедшейся внутренней подписью
      не давал НИКАКОГО сигнала, просто пропадала строка отпечатка */
   let list = [];
+  let weak = false;
   try{ list = parsePubAll(theirPub.value); their = list[0] || null; }
-  catch(e){ if(e && e.badbind) badBind = true; }
+  catch(e){ if(e && e.weakkey) weak = true; else if(e && e.badbind) badBind = true; }
+  if(weak){ setStatus('stWeakKey', 'err'); fpLine.innerHTML = ''; return; }
   if(badBind){ setStatus('stBadBind', 'err'); fpLine.innerHTML = ''; return; }
   if(list.length > 1){ await showFingerprints(myId, null, list); return; }
   if(myId || their) await showFingerprints(myId, their); else { fpLine.innerHTML = ''; }
@@ -2906,6 +2965,7 @@ async function readContainerV1(file, myId, password){
     if(c.length < HEAD + SIG + 16) throw new Error('short');
     const kemCt = c.slice(7, 7 + KEMCT);
     const senderSigPub = c.slice(7 + KEMCT, HEAD);
+    assertGoodSender(senderSigPub);   /* «слабый» ключ отправителя — и в старом контейнере */
     const body = c.slice(HEAD, c.length - SIG);
     const sig = c.slice(c.length - SIG);
     const recipHash = await sha256(myId.kemPub);
@@ -3337,6 +3397,49 @@ async function runSelfTest(){
     }, e => e.notForYou);
   }
 
+  /* пароль из одних пробелов (в т.ч. юникод-пробелов) схлопывался в пустой ключ */
+  {
+    const CH = { time:1, mem:4096, parallelism:1, hashLen:32, type:2 };
+    ok('пароль/пустой-после-нормализации', normPass('\u00a0\u2003\u3000\ufeff') === '');
+    await throws('пароль/только-пробелы-отказ', () => encryptPassword('секрет', '\u00a0\u2003\u3000', CH), e => e.emptyPass);
+    await throws('пароль/пустая-строка-отказ', () => encryptPassword('секрет', '', CH), e => e.emptyPass);
+    await throws('пароль/пробелы-по-краям-ок', async () => {
+      /* «  пароль  » и «пароль» должны совпадать — это НЕ ошибка, а удобство */
+      const c = await encryptPassword('x', '  пароль  ', CH);
+      if((await decryptV2(c, 'пароль')) !== 'x') throw new Error('trim-broken');
+      throw { intended:true };   /* если дошли — trim работает, «ошибку» глотаем */
+    }, e => e && e.intended);
+  }
+
+  /* «слабые» точки Ed25519: нулевая подпись под ними сходится с чем угодно.
+     Обязаны отвергаться и как публичный ключ, и как отправитель. */
+  {
+    const weak = [
+      '0100000000000000000000000000000000000000000000000000000000000000',
+      '0000000000000000000000000000000000000000000000000000000000000000',
+      'ecffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff',
+      'edffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff',
+      'c7176a703d4dd84fba3c0b760d10670f2a2053fa2c39ccc64ec7fd7792ac037a',
+    ].map(h => { const a = new Uint8Array(32); for(let i=0;i<32;i++) a[i]=parseInt(h.substr(i*2,2),16); return a; });
+    let allRejected = true;
+    for(const wp of weak){
+      try{ parsePub(PUBPFX + b64encode(concatBytes(new Uint8Array([2]), newIdentity().kemPub, wp, new Uint8Array(64)))); allRejected = false; }
+      catch(e){ if(!e.weakkey){ allRejected = false; } }
+    }
+    ok('подпись/слабые-точки-отвергнуты', allRejected);
+    ok('подпись/isWeakSigPub', weak.every(isWeakSigPub) && !isWeakSigPub(newIdentity().sigPub));
+    /* и в готовом ABRAK-сообщении отправителя-нуль не пропускаем */
+    await throws('подпись/слабый-отправитель-в-письме', async () => {
+      const Bob = newIdentity();
+      const rh = await sha256(Bob.kemPub);
+      const e0 = PQ.xwing.encapsulate(Bob.kemPub);
+      const zpub = new Uint8Array(32);
+      const body = await cascadeEncrypt(e0.sharedSecret, enc.encode('x'), msgInfo(zpub, rh));
+      const forged = MAGICK + b64encode(concatBytes(new Uint8Array([2]), e0.cipherText, zpub, body, new Uint8Array(64)));
+      await abrakDecrypt(forged, Bob, null);
+    }, e => e.weakkey);
+  }
+
   /* ── попытки взлома, каждая обязана быть отбита ── */
   {
     const CH = { time:1, mem:4096, parallelism:1, hashLen:32, type:2 };
@@ -3484,11 +3587,12 @@ async function vaultSave(){
   try{ id = parsePriv(myPriv.value); }
   catch(e){ setStatus(myPriv.value.trim() ? 'stBadPriv' : 'stNoMyId', 'err'); myPriv.focus(); return; }
   const pass = $('vaultPass').value;
-  if(!pass){ setStatus('stVaultNoPass', 'err'); $('vaultPass').focus(); return; }
+  /* пустой — в том числе из одних пробелов (normPass их срезает) */
+  if(normPass(pass) === ''){ setStatus('stVaultNoPass', 'err'); $('vaultPass').focus(); return; }
   setBusy(true, null, ''); startProgress(L().progEnc);
   try{
     const salt = crypto.getRandomValues(new Uint8Array(16));
-    const { master, kdf, profile } = await masterForEncrypt(pass, salt, A2);
+    const { master, kdf, profile } = await masterForEncrypt(pass, salt, A2_HARD);
     const body = await cascadeEncrypt(master, concatBytes(id.kemSeed, id.sigSec), VAULT_INFO);
     wipe(master);
     t.setItem(VAULT_KEY, b64encode(concatBytes(buildPassHeader(salt, kdf, profile), body)));
