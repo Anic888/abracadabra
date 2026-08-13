@@ -1124,6 +1124,7 @@ ru: {
   lblDen:'СКРЫТОЕ СООБЩЕНИЕ <b>//</b> ОТКРОЕТСЯ ДРУГИМ ПАРОЛЕМ', phDen:'То, что покажете НЕ под принуждением — откроется скрытым паролем',
   phDenPass:'Скрытый пароль — обязательно другой',
   bDenToggle:'СКРЫТЫЙ ТОМ',
+  denDecryptHint:'ПРИ РАСШИФРОВКЕ ПАРОЛЬ ВВОДИТЕ В ВЕРХНЕЕ ПОЛЕ «КЛЮЧ» — ЛЮБОЙ ИЗ ДВУХ. КАКОЙ ВВЕЛИ, ТОТ СЛОЙ И ОТКРОЕТСЯ',
   denLimit:'ДВА СООБЩЕНИЯ В ОДНОЙ ШИФРОВКЕ. ПАРОЛЬ ПРИКРЫТИЯ (ВВЕРХУ) ОТКРЫВАЕТ БЕЗОБИДНЫЙ ТЕКСТ — ЕГО И ВЫДАЙТЕ ПОД ДАВЛЕНИЕМ. ЧЕСТНО: ДОКАЗАТЬ, ЧТО СКРЫТОГО НЕТ, НЕЛЬЗЯ — ПРОТИВНИК МОЖЕТ ТРЕБОВАТЬ ВТОРОЙ ПАРОЛЬ. ЗАЩИЩАЕТ ВОЗМОЖНОСТЬ НЕ ВЫДАТЬ НАСТОЯЩЕЕ, А НЕ САМ ФАКТ ТАЙНИКА',
   stDenNoPass:'ОШИБКА: НУЖЕН СКРЫТЫЙ ПАРОЛЬ — ИЛИ ВЫКЛЮЧИТЕ СКРЫТЫЙ ТОМ',
   stDenNoText:'ОШИБКА: НУЖНО СКРЫТОЕ СООБЩЕНИЕ — ИЛИ ВЫКЛЮЧИТЕ СКРЫТЫЙ ТОМ',
@@ -1266,6 +1267,7 @@ en: {
   lblDen:'HIDDEN MESSAGE <b>//</b> OPENS WITH A DIFFERENT PASSWORD', phDen:'What you will NOT reveal under coercion — opens with the hidden password',
   phDenPass:'Hidden password — must be different',
   bDenToggle:'HIDDEN VOLUME',
+  denDecryptHint:'WHEN DECRYPTING, TYPE THE PASSWORD IN THE TOP «KEY» FIELD — EITHER ONE. WHICHEVER YOU ENTER OPENS THAT LAYER',
   denLimit:'TWO MESSAGES IN ONE CIPHERTEXT. THE COVER PASSWORD (ABOVE) OPENS THE HARMLESS TEXT — HAND THAT OVER UNDER PRESSURE. HONESTLY: YOU CANNOT PROVE NO HIDDEN VOLUME EXISTS — AN ADVERSARY MAY DEMAND A SECOND PASSWORD. THIS PROTECTS YOUR ABILITY TO WITHHOLD THE REAL ONE, NOT THE FACT THAT A HIDE EXISTS',
   stDenNoPass:'ERROR: NEED A HIDDEN PASSWORD — OR TURN OFF THE HIDDEN VOLUME',
   stDenNoText:'ERROR: NEED A HIDDEN MESSAGE — OR TURN OFF THE HIDDEN VOLUME',
@@ -1408,6 +1410,7 @@ zh: {
   lblDen:'隐藏消息 <b>//</b> 用另一个口令打开', phDen:'受胁迫时你不会交出的内容——用隐藏口令打开',
   phDenPass:'隐藏口令——必须不同',
   bDenToggle:'隐藏卷',
+  denDecryptHint:'解密时请在上方「密钥」栏输入口令——两个中任意一个。输入哪个就打开哪一层',
   denLimit:'一份密文里藏两条消息。掩护口令（上方）打开无害文本——受压时就交出它。诚实地说：你无法证明不存在隐藏卷——对手可以一直索要第二个口令。它保护的是你「不交出真消息」的能力，而非「隐藏卷不存在」这件事',
   stDenNoPass:'错误：需要隐藏口令——或关闭隐藏卷',
   stDenNoText:'错误：需要隐藏消息——或关闭隐藏卷',
@@ -1550,6 +1553,7 @@ es: {
   lblDen:'MENSAJE OCULTO <b>//</b> SE ABRE CON OTRA CONTRASEÑA', phDen:'Lo que NO revelarás bajo coacción — se abre con la contraseña oculta',
   phDenPass:'Contraseña oculta — debe ser distinta',
   bDenToggle:'VOLUMEN OCULTO',
+  denDecryptHint:'AL DESCIFRAR, ESCRIBE LA CONTRASEÑA EN EL CAMPO «CLAVE» DE ARRIBA — CUALQUIERA DE LAS DOS. LA QUE INTRODUZCAS ABRE ESA CAPA',
   denLimit:'DOS MENSAJES EN UN CIFRADO. LA CONTRASEÑA DE TAPADERA (ARRIBA) ABRE EL TEXTO INOFENSIVO — ENTREGA ESA BAJO PRESIÓN. CON HONESTIDAD: NO PUEDES PROBAR QUE NO HAY VOLUMEN OCULTO — UN ADVERSARIO PUEDE EXIGIR UNA SEGUNDA CONTRASEÑA. PROTEGE TU CAPACIDAD DE NO ENTREGAR EL REAL, NO EL HECHO DE QUE EXISTA UN ESCONDITE',
   stDenNoPass:'ERROR: HACE FALTA UNA CONTRASEÑA OCULTA — O DESACTIVA EL VOLUMEN OCULTO',
   stDenNoText:'ERROR: HACE FALTA UN MENSAJE OCULTO — O DESACTIVA EL VOLUMEN OCULTO',
@@ -2587,7 +2591,16 @@ async function doDecrypt(){
     const epoch = ++opEpoch;
     setBusy(true, decryptBtn, L().bDecBusy); startProgress(L().progDec);
     try{
-      const res = await decryptDeniable(found.compact, password.value);
+      /* Человек вводит скрытый пароль в СКРЫТОЕ поле — так он и задавал его при
+         шифровании. Значит если это поле заполнено, он хочет именно скрытый слой,
+         и пробовать надо ЕГО ПЕРВЫМ. Иначе верхний пароль успешно открывал
+         прикрытие, до скрытого дело не доходило, и выглядело это как «пароль не
+         тот». Верхнее поле остаётся запасным. */
+      let res = null, firstErr = null;
+      const tryPw = async pw => { try{ return await decryptDeniable(found.compact, pw); }catch(e){ if(!firstErr) firstErr = e; return null; } };
+      if(denPass.value) res = await tryPw(denPass.value);
+      if(!res) res = await tryPw(password.value);
+      if(!res) throw (firstErr || new Error('bad'));
       if(epoch !== opEpoch) return;
       showResult(res.plain, false);
       /* какой слот открылся, вслух НЕ говорим: подсматривающий через плечо не
@@ -2643,8 +2656,15 @@ function renderDenBar(){
   $('denToggle').textContent = '[ ' + (denOn ? '■ ' : '□ ') + L().bDenToggle + ' ]';
   $('denToggle').classList.toggle('on', denOn);
   $('denPanel').hidden = !denOn;
-  if(denOn && !denHint.textContent){ denHint.className = 'pass-hint'; denHint.textContent = L().denLimit; }
+  if(denOn){
+    /* если во входе уже лежит шифровка — человек расшифровывает, и ему важнее
+       знать, КУДА вводить пароль, чем читать про модель угроз */
+    const decrypting = looksEncrypted(input.value);
+    denHint.className = 'pass-hint' + (decrypting ? ' ok' : '');
+    denHint.textContent = decrypting ? L().denDecryptHint : L().denLimit;
+  }
 }
+input.addEventListener('input', () => { if(denOn) renderDenBar(); });
 $('denToggle').addEventListener('click', () => { denOn = !denOn; renderDenBar(); if(denOn) denInput.focus(); });
 function setDenVisible(show){
   denPass.type = show ? 'text' : 'password';
