@@ -496,6 +496,23 @@ footer .sep{color:var(--line-strong)}
   </div>
   <div class="pass-hint pass-only" id="passHint"></div>
 
+  <!-- скрытый том (правдоподобное отрицание) -->
+  <div class="secbar pass-only" id="denBar">
+    <button class="btn-ghost sec-toggle" id="denToggle" type="button">[ □ СКРЫТЫЙ ТОМ ]</button>
+  </div>
+  <div class="panel pass-only" id="denPanel" hidden>
+    <div class="field-head">
+      <label for="denInput" id="lblDen">СКРЫТОЕ СООБЩЕНИЕ <b>//</b> ОТКРОЕТСЯ ДРУГИМ ПАРОЛЕМ</label>
+    </div>
+    <textarea id="denInput" spellcheck="false" autocapitalize="off" autocomplete="off"></textarea>
+    <div class="pass-row">
+      <input type="password" id="denPass" spellcheck="false" autocapitalize="off" autocomplete="new-password">
+      <button class="btn-ghost" id="denGenBtn" type="button">[ СЛУЧАЙНЫЙ ]</button>
+      <button class="btn-ghost" id="denToggleBtn" type="button" aria-label="Показать пароль">[ ПОКАЗ ]</button>
+    </div>
+    <div class="pass-hint" id="denHint"></div>
+  </div>
+
   <!-- режим КЛЮЧИ -->
   <div class="panel keys-only" id="myIdPanel" hidden>
     <div class="field-head">
@@ -1104,6 +1121,14 @@ ru: {
   stEncOkReduced:'ГОТОВО. УСТРОЙСТВУ НЕ ХВАТИЛО ПАМЯТИ НА ПОЛНЫЙ ARGON2ID, ВЗЯЛ ВДВОЕ ЛЕГЧЕ — ЗАЩИТА ВСЁ РАВНО СИЛЬНАЯ, НО ПАРОЛЬ ЛУЧШЕ ПОДЛИННЕЕ',
   stWeakKey:'ОТКАЗ: КЛЮЧ ПОДПИСИ — «СЛАБАЯ» ТОЧКА, ТАКИЕ КЛЮЧИ ПОДДЕЛЬНЫ. ЭТО НЕ НАСТОЯЩИЙ КЛЮЧ',
   stEmptyPass:'ОШИБКА: ПАРОЛЬ ПУСТОЙ. ПРОБЕЛЫ НЕ СЧИТАЮТСЯ — ВВЕДИТЕ НАСТОЯЩИЙ ПАРОЛЬ ИЛИ НАЖМИТЕ [ СЛУЧАЙНЫЙ ]',
+  lblDen:'СКРЫТОЕ СООБЩЕНИЕ <b>//</b> ОТКРОЕТСЯ ДРУГИМ ПАРОЛЕМ', phDen:'То, что покажете НЕ под принуждением — откроется скрытым паролем',
+  phDenPass:'Скрытый пароль — обязательно другой',
+  bDenToggle:'СКРЫТЫЙ ТОМ',
+  denLimit:'ДВА СООБЩЕНИЯ В ОДНОЙ ШИФРОВКЕ. ПАРОЛЬ ПРИКРЫТИЯ (ВВЕРХУ) ОТКРЫВАЕТ БЕЗОБИДНЫЙ ТЕКСТ — ЕГО И ВЫДАЙТЕ ПОД ДАВЛЕНИЕМ. ЧЕСТНО: ДОКАЗАТЬ, ЧТО СКРЫТОГО НЕТ, НЕЛЬЗЯ — ПРОТИВНИК МОЖЕТ ТРЕБОВАТЬ ВТОРОЙ ПАРОЛЬ. ЗАЩИЩАЕТ ВОЗМОЖНОСТЬ НЕ ВЫДАТЬ НАСТОЯЩЕЕ, А НЕ САМ ФАКТ ТАЙНИКА',
+  stDenNoPass:'ОШИБКА: НУЖЕН СКРЫТЫЙ ПАРОЛЬ — ИЛИ ВЫКЛЮЧИТЕ СКРЫТЫЙ ТОМ',
+  stDenNoText:'ОШИБКА: НУЖНО СКРЫТОЕ СООБЩЕНИЕ — ИЛИ ВЫКЛЮЧИТЕ СКРЫТЫЙ ТОМ',
+  stDenSamePass:'ОШИБКА: СКРЫТЫЙ ПАРОЛЬ ДОЛЖЕН ОТЛИЧАТЬСЯ ОТ ПАРОЛЯ ПРИКРЫТИЯ',
+  stDenEncOk:'OK // ДВА СЛОЯ В ОДНОЙ ШИФРОВКЕ. ПАРОЛЬ ПРИКРЫТИЯ — БЕЗОБИДНЫЙ ТЕКСТ, СКРЫТЫЙ — НАСТОЯЩИЙ',
   docSum:'Документация // как пользоваться',
   help:`<h4>Режим «Пароль»</h4>
 <ol>
@@ -1132,6 +1157,11 @@ ru: {
 <p><b>Одно письмо нескольким.</b> Вставьте в поле «ключ собеседника» подряд несколько публичных ключей — письмо зашифруется один раз случайным ключом, а сам ключ будет завёрнут отдельно для каждого (формат <b>ABRAM.</b>, до 32 получателей). Кому предназначен какой слот, в письме не написано: каждый просто пробует все и узнаёт свой. Значит список адресатов из письма не вытащить. Одному получателю по-прежнему уходит компактный <b>ABRAK.</b> Файлы шифруются одному — оставьте в поле один ключ.</p>
 <p><b>Хранилище личности.</b> [ ЗАПОМНИТЬ ] кладёт ваш приватный ключ в этот браузер под <i>отдельным</i> паролем — чтобы не вставлять его каждый раз. Пароль хранилища не должен совпадать с паролями от шифровок: иначе один подобранный пароль отдаёт сразу и переписку, и личность. Ключ лежит под тем же Argon2id и тем же каскадом, что и всё остальное, поэтому доставшийся кому-то диск даёт не ключ, а задачу перебора. [ × СТЕРЕТЬ ВСЁ ] хранилище намеренно не трогает — для этого есть [ ЗАБЫТЬ ]. Честная граница: от того, кто уже выполняет код в вашем браузере, хранилище не спасает — он дождётся ввода пароля. На чужом и общем компьютере им пользоваться не надо.</p>
 <p><b>Вкладка больше не замирает.</b> Argon2 считается в отдельном потоке, поэтому страница остаётся отзывчивой, а полоса прогресса на файлах показывает настоящие проценты по кадрам. Если браузер не даёт создать поток, всё считается по-старому, на главном, — результат тот же байт в байт, и самотест это проверяет.</p>
+<h4>Скрытый том — на случай принуждения</h4>
+<p>В парольном режиме включите [ ■ СКРЫТЫЙ ТОМ ]. Тогда в одной шифровке живут ДВА сообщения под РАЗНЫМИ паролями: обычное поле — «прикрытие» (безобидный текст, его и выдаёте под давлением), скрытое поле — настоящее. Какой пароль ввели при расшифровке — тот слой и откроется; программа не показывает, прикрытие это было или тайник. Контейнер с тайником и без него — <b>одной длины</b>, а расшифровка обоих паролей занимает <b>одинаковое время</b>, поэтому по размеру и скорости нельзя понять, есть ли второй слой. Пустой второй слот заполнен случайными байтами, неотличимыми от настоящей шифровки.</p>
+<p><b>Честно про предел (он есть и у VeraCrypt):</b> раз программа открытая и про скрытый том все знают, противник может <b>всегда требовать второй пароль</b> — доказать, что тайника нет, невозможно. Это защищает вашу возможность НЕ выдать настоящее, а не сам факт, что тайник существует. И ещё: «пароль-детонатор», который что-то стирает, мы намеренно НЕ делаем — спецслужба первым делом снимает копию и пробует пароли на ней, а срабатывание детонатора лишь доказало бы, что вы что-то прячете.</p>
+<h4>Против государственного противника — что он всё равно видит</h4>
+<p>Даже не сломав шифр, наблюдатель по трафику узнаёт: <b>что вы пользуетесь этой программой</b> (шифровка начинается с «ABRA…») и каким режимом; <b>кто отправитель</b> — в режиме ключей его ключ лежит открыто, поэтому все письма одного автора связываются в соцграф; <b>примерный размер</b> (округлён до «корзины», но класс длины виден). Подпись отправителя — <b>неопровержимое доказательство авторства</b>: это защищает от чужой подделки, но под принуждением работает против вас. Скрыть сам факт использования и личность отправителя эта версия не умеет — для этого нужен «запечатанный отправитель» и стеганография, а это уже другой инструмент.</p>
 <h4>Честные границы — что эта программа не умеет</h4>
 <p><b>Повтор письма.</b> В форматах нет ни отметки времени, ни счётчика, поэтому старую шифровку можно прислать ещё раз, и она откроется как новая. Подделать содержимое нельзя, а вот выдать вчерашнее «да» за сегодняшнее — можно. Если это важно, пишите дату внутри самого текста.</p>
 <p><b>Один шифр — один пароль (для текста).</b> У файлового контейнера есть обязательство по ключу: он не может честно открыться двумя разными паролями в два разных осмысленных документа. У текстовых форматов такой привязки нет — это цена совместимости со старыми шифровками. Если вас могут заставить выдать пароль, помните: доказать, что выданный пароль единственный, программа не поможет.</p>
@@ -1233,6 +1263,14 @@ en: {
   stEncOkReduced:'DONE. THIS DEVICE COULD NOT SPARE THE MEMORY FOR FULL ARGON2ID, SO A LIGHTER SETTING WAS USED — STILL STRONG, BUT PREFER A LONGER PASSWORD',
   stWeakKey:'REJECTED: THE SIGNING KEY IS A WEAK (LOW-ORDER) POINT — SUCH KEYS ARE FORGEABLE, THIS IS NOT A REAL KEY',
   stEmptyPass:'ERROR: THE PASSWORD IS EMPTY. WHITESPACE DOES NOT COUNT — ENTER A REAL PASSWORD OR PRESS [ RANDOM ]',
+  lblDen:'HIDDEN MESSAGE <b>//</b> OPENS WITH A DIFFERENT PASSWORD', phDen:'What you will NOT reveal under coercion — opens with the hidden password',
+  phDenPass:'Hidden password — must be different',
+  bDenToggle:'HIDDEN VOLUME',
+  denLimit:'TWO MESSAGES IN ONE CIPHERTEXT. THE COVER PASSWORD (ABOVE) OPENS THE HARMLESS TEXT — HAND THAT OVER UNDER PRESSURE. HONESTLY: YOU CANNOT PROVE NO HIDDEN VOLUME EXISTS — AN ADVERSARY MAY DEMAND A SECOND PASSWORD. THIS PROTECTS YOUR ABILITY TO WITHHOLD THE REAL ONE, NOT THE FACT THAT A HIDE EXISTS',
+  stDenNoPass:'ERROR: NEED A HIDDEN PASSWORD — OR TURN OFF THE HIDDEN VOLUME',
+  stDenNoText:'ERROR: NEED A HIDDEN MESSAGE — OR TURN OFF THE HIDDEN VOLUME',
+  stDenSamePass:'ERROR: THE HIDDEN PASSWORD MUST DIFFER FROM THE COVER PASSWORD',
+  stDenEncOk:'OK // TWO LAYERS IN ONE CIPHERTEXT. COVER PASSWORD -> HARMLESS TEXT, HIDDEN PASSWORD -> THE REAL ONE',
   docSum:'Documentation // how to use',
   help:`<h4>Password mode</h4>
 <ol>
@@ -1261,6 +1299,11 @@ en: {
 <p><b>One message to many.</b> Paste several public keys one after another into the contact-key field — the message is encrypted once under a random key, and that key is wrapped separately for each recipient (format <b>ABRAM.</b>, up to 32). Which slot belongs to whom is not written down: each recipient simply tries them all and finds their own. So the recipient list cannot be extracted from the message. A single recipient still gets the compact <b>ABRAK.</b> Files go to one recipient — leave a single key in the field.</p>
 <p><b>Identity vault.</b> [ REMEMBER ] stores your private key in this browser under a <i>separate</i> password, so you do not have to paste it every time. The vault password must not match any password you encrypt with: otherwise one cracked password hands over both your correspondence and your identity. The key sits under the same Argon2id and the same cascade as everything else, so a disk that falls into someone’s hands yields a brute-force problem, not a key. [ × WIPE ALL ] deliberately leaves the vault alone — that is what [ FORGET ] is for. An honest boundary: the vault does not protect you from someone already running code in your browser — they will simply wait for you to type the password. Do not use it on a shared or borrowed computer.</p>
 <p><b>The tab no longer freezes.</b> Argon2 runs on its own thread, so the page stays responsive and the file progress bar shows real per-frame percentages. If the browser refuses to create that thread, everything is computed the old way on the main thread — the result is byte-identical, and the self-test verifies exactly that.</p>
+<h4>Hidden volume — for coercion</h4>
+<p>In password mode, enable [ ■ HIDDEN VOLUME ]. One ciphertext then holds TWO messages under DIFFERENT passwords: the normal field is the "cover" (a harmless text you hand over under pressure), the hidden field is the real one. Whichever password you enter opens that layer; the app never reveals whether it was the cover or the hide. A container with a hide and one without are the <b>same length</b>, and decrypting with either password takes the <b>same time</b>, so neither size nor speed betrays a second layer. An empty second slot is filled with random bytes indistinguishable from real ciphertext.</p>
+<p><b>Honest limit (VeraCrypt has it too):</b> because the tool is open and everyone knows about the hidden volume, an adversary can <b>always demand a second password</b> — you cannot prove no hide exists. This protects your ability to WITHHOLD the real one, not the fact that a hide exists. And we deliberately do NOT offer a "kill-password" that erases anything: a state actor images the device first and tries passwords on the copy, and a wipe firing would only prove you were hiding something.</p>
+<h4>Against a nation-state — what it still sees</h4>
+<p>Even without breaking the cipher, a traffic observer learns: <b>that you use this tool</b> (ciphertext starts with "ABRA…") and which mode; <b>who the sender is</b> — in keys mode the sender's key is in the clear, so all messages from one author link into a social graph; and the <b>approximate size</b> (rounded to a bucket, but the length class shows). The sender signature is <b>non-repudiable proof of authorship</b>: good against forgery by others, but it works against you under coercion. Hiding the fact of use and the sender's identity is beyond this version — that needs sealed-sender and steganography, a different tool.</p>
 <h4>Honest limits — what this tool does not do</h4>
 <p><b>Replay.</b> The formats carry no timestamp and no counter, so an old ciphertext can be sent again and will open as if it were new. Its contents cannot be forged, but yesterday’s “yes” can be passed off as today’s. If that matters, put the date inside the text itself.</p>
 <p><b>One ciphertext, one password (for text).</b> The file container carries a key commitment: it cannot honestly open under two different passwords into two different meaningful documents. The text formats have no such binding — that is the price of staying readable by older versions. If you can be compelled to hand over a password, note that this tool will not help you prove the one you handed over is the only one.</p>
@@ -1362,6 +1405,14 @@ zh: {
   stEncOkReduced:'已完成。本设备内存不足以运行完整的 ARGON2ID，已改用较轻的档位——强度依然可靠，但建议用更长的口令',
   stWeakKey:'拒绝：签名密钥是「弱」（低阶）点，这类密钥可被伪造，这不是真实的密钥',
   stEmptyPass:'错误：口令为空。空白字符不算——请输入真正的口令或点击 [ 随机 ]',
+  lblDen:'隐藏消息 <b>//</b> 用另一个口令打开', phDen:'受胁迫时你不会交出的内容——用隐藏口令打开',
+  phDenPass:'隐藏口令——必须不同',
+  bDenToggle:'隐藏卷',
+  denLimit:'一份密文里藏两条消息。掩护口令（上方）打开无害文本——受压时就交出它。诚实地说：你无法证明不存在隐藏卷——对手可以一直索要第二个口令。它保护的是你「不交出真消息」的能力，而非「隐藏卷不存在」这件事',
+  stDenNoPass:'错误：需要隐藏口令——或关闭隐藏卷',
+  stDenNoText:'错误：需要隐藏消息——或关闭隐藏卷',
+  stDenSamePass:'错误：隐藏口令必须与掩护口令不同',
+  stDenEncOk:'OK // 一份密文两层。掩护口令→无害文本，隐藏口令→真实内容',
   docSum:'文档 // 使用说明',
   help:`<h4>口令模式</h4>
 <ol>
@@ -1390,6 +1441,11 @@ zh: {
 <p><b>一封信发给多人。</b>在「对方公钥」字段里依次粘贴多个公钥——信件只用一个随机密钥加密一次，而该密钥会为每位收件人分别封装（格式 <b>ABRAM.</b>，最多 32 人）。哪个槽属于谁并未写入信中：每人依次尝试，自会认出自己的那个。因此无法从信件中提取收件人名单。只有一位收件人时仍使用更紧凑的 <b>ABRAK.</b>。文件只加密给一位收件人——字段中请只留一个公钥。</p>
 <p><b>身份保险库。</b>[ 记住 ] 会用<i>单独的</i>口令把你的私钥存进本浏览器，免去每次粘贴。保险库口令不得与你用于加密的任何口令相同：否则一个被破解的口令会同时交出通信内容和你的身份。密钥使用与其他部分相同的 Argon2id 和级联加密，因此落入他人之手的磁盘给出的是一道爆破难题，而不是密钥。[ × 全部擦除 ] 有意不动保险库——那是 [ 忘记 ] 的职责。诚实的边界：若有人已在你的浏览器中执行代码，保险库救不了你——他只会等你输入口令。请勿在共用或借来的电脑上使用。</p>
 <p><b>标签页不再卡死。</b>Argon2 在独立线程中运行，页面保持响应，文件进度条按帧显示真实百分比。若浏览器不允许创建该线程，就仍按旧方式在主线程计算——结果逐字节相同，自检会专门核对这一点。</p>
+<h4>隐藏卷——用于应对胁迫</h4>
+<p>在口令模式下启用 [ ■ 隐藏卷 ]。一份密文便可容纳两条消息，各用不同口令：普通字段是「掩护」（受压时交出的无害文本），隐藏字段是真实内容。解密时输入哪个口令就打开哪一层；程序绝不透露这是掩护还是隐藏。有隐藏卷和没有隐藏卷的容器<b>长度相同</b>，两个口令的解密<b>用时相同</b>，因此大小和速度都不会泄露是否存在第二层。空的第二槽填入随机字节，与真实密文无法区分。</p>
+<p><b>诚实的边界（VeraCrypt 也如此）：</b>由于工具开源且人人知道隐藏卷，对手可以<b>一直索要第二个口令</b>——你无法证明不存在隐藏卷。它保护的是你「不交出真实内容」的能力，而非「隐藏卷存在」这一事实。我们也刻意不提供会擦除内容的「毁灭口令」：国家级对手会先镜像设备并在副本上试口令，而擦除一旦触发反而证明你在隐藏什么。</p>
+<h4>面对国家级对手——他仍然能看到什么</h4>
+<p>即使不破解密码，流量观察者也能得知：<b>你在使用本工具</b>（密文以「ABRA…」开头）及使用哪种模式；<b>发送方是谁</b>——密钥模式下发送方密钥是明文，因此同一作者的所有信件会连成社交图谱；以及<b>大致大小</b>（补齐到「桶」，但长度档位可见）。发送方签名是<b>不可否认的作者证明</b>：可防他人伪造，但在胁迫下对你不利。隐藏使用本身和发送方身份超出本版本能力——那需要「密封发送者」和隐写术，属于另一种工具。</p>
 <h4>诚实的边界——本工具做不到什么</h4>
 <p><b>重放。</b>格式中既没有时间戳也没有计数器，因此旧密文可以再次发送并像新的一样打开。其内容无法伪造，但昨天的「同意」可以被当作今天的。若这一点要紧，请把日期写进正文里。</p>
 <p><b>一份密文，一个口令（对文本而言）。</b>文件容器带有密钥承诺：它无法诚实地用两个不同口令打开成两份不同且都有意义的文档。文本格式没有这种绑定——这是保持旧版本可读性的代价。如果你可能被迫交出口令，请注意：本工具无法帮你证明交出的那个是唯一的。</p>
@@ -1491,6 +1547,14 @@ es: {
   stEncOkReduced:'HECHO. ESTE DISPOSITIVO NO PUDO RESERVAR MEMORIA PARA EL ARGON2ID COMPLETO Y SE USÓ UN AJUSTE MÁS LIGERO — SIGUE SIENDO FUERTE, PERO USA UNA CONTRASEÑA MÁS LARGA',
   stWeakKey:'RECHAZADO: LA CLAVE DE FIRMA ES UN PUNTO DÉBIL (DE ORDEN BAJO) — ESAS CLAVES SON FALSIFICABLES, NO ES UNA CLAVE REAL',
   stEmptyPass:'ERROR: LA CONTRASEÑA ESTÁ VACÍA. LOS ESPACIOS NO CUENTAN — INTRODUCE UNA CONTRASEÑA REAL O PULSA [ ALEATORIA ]',
+  lblDen:'MENSAJE OCULTO <b>//</b> SE ABRE CON OTRA CONTRASEÑA', phDen:'Lo que NO revelarás bajo coacción — se abre con la contraseña oculta',
+  phDenPass:'Contraseña oculta — debe ser distinta',
+  bDenToggle:'VOLUMEN OCULTO',
+  denLimit:'DOS MENSAJES EN UN CIFRADO. LA CONTRASEÑA DE TAPADERA (ARRIBA) ABRE EL TEXTO INOFENSIVO — ENTREGA ESA BAJO PRESIÓN. CON HONESTIDAD: NO PUEDES PROBAR QUE NO HAY VOLUMEN OCULTO — UN ADVERSARIO PUEDE EXIGIR UNA SEGUNDA CONTRASEÑA. PROTEGE TU CAPACIDAD DE NO ENTREGAR EL REAL, NO EL HECHO DE QUE EXISTA UN ESCONDITE',
+  stDenNoPass:'ERROR: HACE FALTA UNA CONTRASEÑA OCULTA — O DESACTIVA EL VOLUMEN OCULTO',
+  stDenNoText:'ERROR: HACE FALTA UN MENSAJE OCULTO — O DESACTIVA EL VOLUMEN OCULTO',
+  stDenSamePass:'ERROR: LA CONTRASEÑA OCULTA DEBE DIFERIR DE LA DE TAPADERA',
+  stDenEncOk:'OK // DOS CAPAS EN UN CIFRADO. CONTRASEÑA DE TAPADERA -> TEXTO INOFENSIVO, OCULTA -> EL REAL',
   docSum:'Documentación // cómo usar',
   help:`<h4>Modo contraseña</h4>
 <ol>
@@ -1519,6 +1583,11 @@ es: {
 <p><b>Un mensaje para muchos.</b> Pega varias claves públicas seguidas en el campo de la clave del contacto: el mensaje se cifra una sola vez con una clave aleatoria, y esa clave se envuelve por separado para cada destinatario (formato <b>ABRAM.</b>, hasta 32). Qué ranura corresponde a quién no está escrito: cada uno las prueba todas y reconoce la suya. Por eso la lista de destinatarios no se puede extraer del mensaje. Con un solo destinatario se sigue usando el compacto <b>ABRAK.</b> Los archivos van a un único destinatario: deja una sola clave en el campo.</p>
 <p><b>Caja fuerte de identidad.</b> [ RECORDAR ] guarda tu clave privada en este navegador con una contraseña <i>aparte</i>, para no tener que pegarla cada vez. Esa contraseña no debe coincidir con ninguna con la que cifres: si no, una sola contraseña descifrada entrega a la vez tu correspondencia y tu identidad. La clave queda bajo el mismo Argon2id y la misma cascada que todo lo demás, así que un disco en manos ajenas da un problema de fuerza bruta, no una clave. [ × BORRAR TODO ] deja la caja intacta a propósito: para eso está [ OLVIDAR ]. Un límite honesto: la caja no te protege de quien ya ejecuta código en tu navegador — esperará a que teclees la contraseña. No la uses en un ordenador compartido o prestado.</p>
 <p><b>La pestaña ya no se congela.</b> Argon2 corre en su propio hilo, así que la página sigue respondiendo y la barra de progreso de archivos muestra porcentajes reales por fotograma. Si el navegador no permite crear ese hilo, todo se calcula como antes en el hilo principal — el resultado es idéntico byte a byte, y el autotest lo comprueba.</p>
+<h4>Volumen oculto — para la coacción</h4>
+<p>En modo contraseña, activa [ ■ VOLUMEN OCULTO ]. Un cifrado contiene entonces DOS mensajes con contraseñas DISTINTAS: el campo normal es la «tapadera» (un texto inofensivo que entregas bajo presión), el campo oculto es el real. La contraseña que introduzcas abre esa capa; la app nunca revela si fue la tapadera o el escondite. Un contenedor con escondite y otro sin él tienen la <b>misma longitud</b>, y descifrar con cualquiera de las dos contraseñas tarda el <b>mismo tiempo</b>, así que ni el tamaño ni la velocidad delatan una segunda capa. Una segunda ranura vacía se rellena con bytes aleatorios indistinguibles de un cifrado real.</p>
+<p><b>Límite honesto (VeraCrypt también lo tiene):</b> como la herramienta es abierta y todos conocen el volumen oculto, un adversario puede <b>exigir siempre una segunda contraseña</b> — no puedes probar que no hay escondite. Esto protege tu capacidad de NO entregar el real, no el hecho de que exista un escondite. Y deliberadamente NO ofrecemos una «contraseña de destrucción» que borre nada: un actor estatal primero clona el dispositivo y prueba contraseñas en la copia, y un borrado al dispararse solo probaría que ocultabas algo.</p>
+<h4>Frente a un estado — lo que aún ve</h4>
+<p>Aun sin romper el cifrado, un observador de tráfico sabe: <b>que usas esta herramienta</b> (el cifrado empieza por «ABRA…») y qué modo; <b>quién es el remitente</b> — en modo claves la clave del remitente va en claro, así que todos los mensajes de un mismo autor se enlazan en un grafo social; y el <b>tamaño aproximado</b> (redondeado a un «cubo», pero la clase de longitud se ve). La firma del remitente es <b>prueba innegable de autoría</b>: buena contra falsificaciones ajenas, pero bajo coacción juega en tu contra. Ocultar el hecho de uso y la identidad del remitente queda fuera de esta versión — para eso hacen falta «remitente sellado» y esteganografía, otra herramienta.</p>
 <h4>Límites honestos — lo que esta herramienta no hace</h4>
 <p><b>Reenvío.</b> Los formatos no llevan marca de tiempo ni contador, así que un cifrado antiguo puede reenviarse y se abrirá como si fuera nuevo. Su contenido no se puede falsificar, pero el «sí» de ayer puede hacerse pasar por el de hoy. Si eso importa, escribe la fecha dentro del propio texto.</p>
 <p><b>Un cifrado, una contraseña (para el texto).</b> El contenedor de archivos lleva un compromiso de clave: no puede abrirse honestamente con dos contraseñas distintas en dos documentos distintos y con sentido. Los formatos de texto no tienen ese vínculo — es el precio de seguir siendo legibles por versiones anteriores. Si pueden obligarte a entregar una contraseña, ten presente que esta herramienta no te ayudará a demostrar que la entregada es la única.</p>
@@ -1934,6 +2003,100 @@ async function decryptV1(compact, pass){
   return dec.decode(plain);
 }
 
+/* ═══════════ СКРЫТЫЙ ТОМ (ABRAD — правдоподобное отрицание) ═══════════
+   Как в VeraCrypt: в контейнере ВСЕГДА два слота одинакового размера.
+     • пароль «прикрытия» открывает безобидное сообщение (его и выдают под
+       принуждением);
+     • другой пароль открывает настоящее сообщение из второго слота.
+   Если второй пароль не задан, второй слот заполняется СЛУЧАЙНЫМИ байтами —
+   выход AES-GCM неотличим от случайного, поэтому доказать, что там что-то есть,
+   без пароля невозможно.
+
+   Честный предел (записан и в интерфейсе): раз инструмент открытый, противник
+   знает про второй слот и МОЖЕТ ВСЕГДА требовать второй пароль — доказать, что
+   его нет, нельзя. Это защищает возможность НЕ выдать настоящее, а не сам факт
+   наличия второго тома. Ровно та же граница, что у VeraCrypt.
+
+   Два свойства против спецслужб:
+   1) РАЗМЕР не выдаёт, использован ли второй слот: оба слота всегда равны и
+      добиты до общей корзины по длиннейшему из текстов.
+   2) ВРЕМЯ не выдаёт, какой пароль ввели: расшифровка ВСЕГДА считает Argon2 по
+      обеим солям, независимо от того, какой слот сошёлся. */
+const MAGICD = 'ABRAD.';
+const DENIABLE_INFO = 'abracadabra/v1/deniable-slot';
+/* фиксированный паддинг: длину пишем внутрь, добиваем нулями до точного размера
+   (unpad проверит нулевой хвост) */
+function padFixed(data, innerLen){
+  if(data.length + 4 > innerLen) throw new Error('toolong');
+  const out = new Uint8Array(innerLen);
+  new DataView(out.buffer, out.byteOffset, out.byteLength).setUint32(0, data.length, false);
+  out.set(data, 4);
+  return out;
+}
+async function cascadeEncryptFixed(master, plainBytes, innerLen){
+  const K = await keysFromMaster(master, DENIABLE_INFO);
+  const inner = chacha20Xor(K.kCha, K.nCha, padFixed(plainBytes, innerLen));
+  const aesKey = await crypto.subtle.importKey('raw', K.kAes, { name:'AES-GCM' }, false, ['encrypt']);
+  const out = new Uint8Array(await crypto.subtle.encrypt({ name:'AES-GCM', iv: K.ivAes }, aesKey, inner));
+  wipe(K.kAes, K.kCha, inner);
+  return out;
+}
+async function cascadeDecryptFixed(master, body){
+  const K = await keysFromMaster(master, DENIABLE_INFO);
+  const aesKey = await crypto.subtle.importKey('raw', K.kAes, { name:'AES-GCM' }, false, ['decrypt']);
+  const inner = new Uint8Array(await crypto.subtle.decrypt({ name:'AES-GCM', iv: K.ivAes }, aesKey, body));
+  const out = unpad(chacha20Xor(K.kCha, K.nCha, inner));   /* unpad читает точную длину */
+  wipe(K.kAes, K.kCha, inner);
+  return out;
+}
+/* decoyText/decoyPass — «прикрытие» (слот A); realText/realPass — настоящее
+   (слот B, необязательно). Профиль KDF один на весь контейнер. */
+async function encryptDeniable(decoyText, decoyPass, realText, realPass, profOpt){
+  const a = enc.encode(decoyText), b = realText ? enc.encode(realText) : new Uint8Array(0);
+  const innerLen = bucketOf(Math.max(a.length, b.length) + 4);   /* общая корзина обоих */
+
+  const saltA = crypto.getRandomValues(new Uint8Array(16));
+  const A = await masterForEncrypt(decoyPass, saltA, profOpt);
+  const ctA = await cascadeEncryptFixed(A.master, a, innerLen);
+  wipe(A.master);
+
+  const saltB = crypto.getRandomValues(new Uint8Array(16));
+  let ctB;
+  if(realText && realPass){
+    const B = await masterForEncrypt(realPass, saltB, A.profile || profOpt);
+    ctB = await cascadeEncryptFixed(B.master, b, innerLen);
+    wipe(B.master);
+  }else{
+    /* второго сообщения нет — слот B чисто случайный, неотличим от каскада */
+    ctB = crypto.getRandomValues(new Uint8Array(innerLen + 16));
+  }
+  const header = buildPassHeader(saltA, A.kdf, A.profile);   /* соль А + профиль */
+  return MAGICD + b64encode(concatBytes(
+    header, u32be(innerLen + 16), saltB, ctA, ctB));
+}
+async function decryptDeniable(compact, pass){
+  const data = b64decode(compact.slice(MAGICD.length));
+  const h = readPassHeader(data, 0);          /* saltA + профиль */
+  let off = h.bodyOff;
+  if(data.length < off + 4 + 16){ const e = new Error('short'); e.short = true; throw e; }
+  const slotLen = rdU32be(data, off); off += 4;
+  const saltB = data.slice(off, off + 16); off += 16;
+  if(data.length !== off + 2 * slotLen){ const e = new Error('short'); e.short = true; throw e; }
+  const ctA = data.slice(off, off + slotLen);
+  const ctB = data.slice(off + slotLen, off + 2 * slotLen);
+
+  /* Оба Argon2 считаем ВСЕГДА — время не должно выдавать, какой пароль ввели. */
+  const mA = await masterForDecrypt(pass, h.salt, h.kdf, h.profile);
+  const mB = await masterForDecrypt(pass, saltB, h.kdf, h.profile);
+  let plainA = null, plainB = null;
+  try{ plainA = await cascadeDecryptFixed(mA, ctA); }catch(e){}
+  try{ plainB = await cascadeDecryptFixed(mB, ctB); }catch(e){}
+  wipe(mA, mB);
+  if(plainA) return { plain: dec.decode(plainA), slot: 'decoy' };
+  if(plainB) return { plain: dec.decode(plainB), slot: 'hidden' };
+  const e = new Error('bad'); throw e;
+}
+
 /* ═══════════ РЕЖИМ КЛЮЧИ (ABRAK: X-Wing + Ed25519) ═══════════ */
 /* identity = X-Wing keypair (kemSeed 32 / kemPub 1216) + Ed25519 (sigSec 32 / sigPub 32) */
 function buildIdentity(kemSeed, sigSec){
@@ -2167,7 +2330,11 @@ async function abramDecrypt(compact, myId, theirPubOpt){
   }
   const recipHash = await sha256(myId.kemPub);
   let cek = null;
-  for(let i = 0; i < n && !cek; i++){
+  /* Перебираем ВСЕ слоты, а не до первого совпадения. Ранний выход раскрывал бы
+     твою позицию в списке получателей по времени расшифровки: наблюдатель с
+     доступом к таймингу на устройстве видел бы, первый ты в группе или последний.
+     Теперь время не зависит от того, чей слот сработал. */
+  for(let i = 0; i < n; i++){
     const off = 2 + 32 + i * SLOT;
     const kemCt = data.slice(off, off + KEMCT);
     const wrapped = data.slice(off + KEMCT, off + SLOT);
@@ -2178,8 +2345,9 @@ async function abramDecrypt(compact, myId, theirPubOpt){
     wipe(ss);
     try{
       const key = await crypto.subtle.importKey('raw', W.k, { name:'AES-GCM' }, false, ['decrypt']);
-      cek = new Uint8Array(await crypto.subtle.decrypt(
+      const got = new Uint8Array(await crypto.subtle.decrypt(
         { name:'AES-GCM', iv: W.iv, additionalData: slotAad(n, senderSigPub, i) }, key, wrapped));
+      if(!cek) cek = got;   /* первый сработавший — наш ключ; остальные слоты дочитываем ради времени */
     }catch(e){ /* не мой слот */ }
     wipe(W.k);
   }
@@ -2196,7 +2364,7 @@ async function abramDecrypt(compact, myId, theirPubOpt){
 
 /* Дешёвая проверка «похоже на шифровку» — для переключения главной кнопки.
    Вызывается на каждое нажатие клавиши, поэтому здесь не должно быть разбора. */
-function looksEncrypted(text){ return /ABRA(?:K|M|[12])\./.test(text); }
+function looksEncrypted(text){ return /ABRA(?:K|M|D|[12])\./.test(text); }
 
 /* atob снисходителен: принимает длину не кратную 4 и молча дочитывает лишнее.
    Требуем канонический base64, иначе к payload приклеивались чужие байты. */
@@ -2212,7 +2380,7 @@ function isB64(s){
    пробел — это граница, дальше идёт обычный текст. Выравнивание до кратности 4
    отбрасывает не больше трёх символов. */
 function extractCipher(text){
-  const m = text.match(/ABRA(?:K|M|[12])\.[A-Za-z0-9+/=\r\n]+/);
+  const m = text.match(/ABRA(?:K|M|D|[12])\.[A-Za-z0-9+/=\r\n]+/);
   if(!m) return null;
   let run = m[0].split(/\n[ \t]*\n/)[0];
   /* Буквы A, B, R входят в алфавит base64, поэтому «ABRA» встречается и ВНУТРИ
@@ -2227,7 +2395,7 @@ function extractCipher(text){
   const rem = payload.length % 4;
   if(rem) payload = payload.slice(0, payload.length - rem);
   if(payload.length < 4 || !isB64(payload)) return null;
-  const v = pfx === MAGICK ? 'k' : pfx === MAGICM ? 'm' : pfx === MAGIC2 ? 2 : 1;
+  const v = pfx === MAGICK ? 'k' : pfx === MAGICM ? 'm' : pfx === MAGICD ? 'd' : pfx === MAGIC2 ? 2 : 1;
   return { compact: pfx + payload, v };
 }
 
@@ -2342,6 +2510,24 @@ async function doEncrypt(){
     return;
   }
   if(!password.value){ setStatus('stNoPassEnc', 'err'); password.focus(); return; }
+  /* скрытый том: прикрытие = обычное поле, тайник = скрытое. Пароли обязаны
+     различаться, иначе один пароль открыл бы оба слота и смысл пропадает. */
+  if(denOn){
+    if(!denPass.value){ setStatus('stDenNoPass', 'err'); denPass.focus(); return; }
+    if(normPass(denPass.value) === normPass(password.value)){ setStatus('stDenSamePass', 'err'); denPass.focus(); return; }
+    if(!denInput.value.trim()){ setStatus('stDenNoText', 'err'); denInput.focus(); return; }
+    const epoch = ++opEpoch;
+    setBusy(true, encryptBtn, L().bEncBusy); startProgress(L().progEnc);
+    try{
+      const cipher = await encryptDeniable(text, password.value, denInput.value, denPass.value);
+      if(epoch !== opEpoch) return;
+      showResult(cipher, true);
+      if(srcWipeOn){ input.value = ''; denInput.value = ''; }
+      setStatus('stDenEncOk', 'ok', srcWipeOn ? L().stSrcWiped : '');
+    }catch(e){ showResult('', false); if(!handleKdfError(e)) setStatus('stEncFail', 'err', (e && e.message ? e.message : String(e))); }
+    finally{ setBusy(false, encryptBtn); }
+    return;
+  }
   const epoch = ++opEpoch;
   setBusy(true, encryptBtn, L().bEncBusy); startProgress(L().progEnc);
   try{
@@ -2394,6 +2580,24 @@ async function doDecrypt(){
     return;
   }
 
+  /* скрытый том — тем же паролем открывается тот слот, чей пароль ввели */
+  if(found.v === 'd'){
+    if(MODE === 'keys'){ setStatus('stWrongModeK', 'err'); return; }
+    if(!password.value){ setStatus('stNoPass', 'err'); password.focus(); return; }
+    const epoch = ++opEpoch;
+    setBusy(true, decryptBtn, L().bDecBusy); startProgress(L().progDec);
+    try{
+      const res = await decryptDeniable(found.compact, password.value);
+      if(epoch !== opEpoch) return;
+      showResult(res.plain, false);
+      /* какой слот открылся, вслух НЕ говорим: подсматривающий через плечо не
+         должен понять, прикрытие это или тайник */
+      setStatus('stDecOk', 'ok');
+    }catch(e){ if(epoch !== opEpoch) return; showResult('', false); if(!handleKdfError(e)) setStatus('stBad', 'err'); }
+    finally{ setBusy(false, decryptBtn); }
+    return;
+  }
+
   /* v1 / v2 — парольные */
   if(MODE === 'keys'){ setStatus('stWrongModeK', 'err'); return; }
   if(!password.value){ setStatus('stNoPass', 'err'); password.focus(); return; }
@@ -2434,6 +2638,22 @@ function refreshPassHint(){
   setPassHint('');
 }
 password.addEventListener('input', refreshPassHint);
+let denOn = false;
+function renderDenBar(){
+  $('denToggle').textContent = '[ ' + (denOn ? '■ ' : '□ ') + L().bDenToggle + ' ]';
+  $('denToggle').classList.toggle('on', denOn);
+  $('denPanel').hidden = !denOn;
+  if(denOn && !denHint.textContent){ denHint.className = 'pass-hint'; denHint.textContent = L().denLimit; }
+}
+$('denToggle').addEventListener('click', () => { denOn = !denOn; renderDenBar(); if(denOn) denInput.focus(); });
+function setDenVisible(show){
+  denPass.type = show ? 'text' : 'password';
+  $('denToggleBtn').textContent = show ? L().bHide : L().bShow;
+  $('denToggleBtn').style.color = show ? 'var(--neon)' : '';
+}
+$('denToggleBtn').addEventListener('click', () => setDenVisible(denPass.type === 'password'));
+$('denGenBtn').addEventListener('click', () => { denPass.value = genPassword(); setDenVisible(true); });
+
 function setPassVisible(show){
   password.type = show ? 'text' : 'password';
   passToggle.textContent = show ? L().bHide : L().bShow;
@@ -2441,7 +2661,9 @@ function setPassVisible(show){
   passToggle.style.color = show ? 'var(--neon)' : '';
 }
 passToggle.addEventListener('click', () => setPassVisible(password.type === 'password'));
-genBtn.addEventListener('click', () => {
+/* ~149 бит: 30 символов из 31-буквенного алфавита, отбраковка по модулю ради
+   равномерности. Используется и для основного, и для скрытого пароля. */
+function genPassword(){
   const A = '23456789abcdefghjkmnpqrstuvwxyz';
   const lim = Math.floor(0x100000000 / A.length) * A.length;
   const buf = new Uint32Array(1);
@@ -2451,7 +2673,10 @@ genBtn.addEventListener('click', () => {
     for(let i = 0; i < 5; i++){ do { crypto.getRandomValues(buf); } while(buf[0] >= lim); s += A[buf[0] % A.length]; }
     groups.push(s);
   }
-  password.value = groups.join('-');
+  return groups.join('-');
+}
+genBtn.addEventListener('click', () => {
+  password.value = genPassword();
   setPassVisible(true);
   setPassHint('hintGen', 'ok');
 });
@@ -2599,6 +2824,7 @@ function doWipeAll(fromTimer){
   disarmTimer();
   clearFileState();
   input.value = ''; password.value = ''; myPriv.value = ''; theirPub.value = '';
+  denInput.value = ''; denPass.value = '';   /* скрытый том тоже стираем */
   $('vaultPass').value = '';        /* поле — да; сохранённая личность — нет, для неё есть «забыть» */
   showResult('', false);
   setPassHint('');
@@ -2607,6 +2833,17 @@ function doWipeAll(fromTimer){
   /* writeText возвращает промис — try/catch его отказ не ловит, и в консоли
      оставался необработанный reject */
   if(copiedFromHere){ try{ const p = navigator.clipboard.writeText(''); if(p && p.catch) p.catch(() => {}); }catch(e){} copiedFromHere = false; }
+  /* Форензика при изъятии устройства: PWA-версия держит копию приложения в
+     Cache Storage, и разовый перехват мог бы подсадить туда изменённый файл,
+     который переживёт «стереть всё». Поэтому чистим и кэш, и регистрацию
+     service worker. (Для file:// ни того, ни другого нет — там и чистить нечего.
+     Настоящее сообщение это не хранит, но убрать сам инструмент из следов
+     под принуждением — правильно.) */
+  try{
+    if(self.caches && caches.keys) caches.keys().then(ks => ks.forEach(k => caches.delete(k))).catch(()=>{});
+    if(navigator.serviceWorker && navigator.serviceWorker.getRegistrations)
+      navigator.serviceWorker.getRegistrations().then(rs => rs.forEach(r => r.unregister())).catch(()=>{});
+  }catch(e){}
   const w = document.querySelector('.wrap');
   w.classList.add('wipeflash');
   setTimeout(() => w.classList.remove('wipeflash'), 350);
@@ -3403,6 +3640,30 @@ async function runSelfTest(){
     }, e => e.notForYou);
   }
 
+  /* скрытый том: прикрытие и тайник, свойства правдоподобного отрицания */
+  {
+    const CH = { time:1, mem:4096, parallelism:1, hashLen:32, type:2 };
+    const cont = await encryptDeniable('прикрытие', 'passA', 'тайна', 'passB', CH);
+    ok('скрытый/формат', cont.slice(0,6) === MAGICD);
+    ok('скрытый/прикрытие', (await decryptDeniable(cont, 'passA')).plain === 'прикрытие');
+    ok('скрытый/тайник', (await decryptDeniable(cont, 'passB')).plain === 'тайна');
+    await throws('скрытый/неверный-пароль', () => decryptDeniable(cont, 'passX'));
+    /* размер не выдаёт наличие тайника: с тайником и без — одной длины */
+    const only = await encryptDeniable('прикрытие', 'passA', '', '', CH);
+    ok('скрытый/размер-не-выдаёт', cont.length === only.length);
+    ok('скрытый/пустой-без-фантома', (await decryptDeniable(only, 'passA')).plain === 'прикрытие');
+    await throws('скрытый/пустой-нет-тайника', () => decryptDeniable(only, 'что-угодно'));
+    /* второй слот случайного контейнера неотличим (высокая энтропия) */
+    {
+      const d = b64decode(only.slice(MAGICD.length)); const h = readPassHeader(d, 0);
+      let o = h.bodyOff; const L = rdU32be(d, o); o += 4 + 16;
+      const slotB = d.slice(o + L, o + 2*L);
+      const f = new Array(256).fill(0); for(const x of slotB) f[x]++;
+      let H = 0; for(const c of f) if(c){ const pr = c/slotB.length; H -= pr*Math.log2(pr); }
+      ok('скрытый/слот-случаен', H > 6.5);
+    }
+  }
+
   /* пароль из одних пробелов (в т.ч. юникод-пробелов) схлопывался в пустой ключ */
   {
     const CH = { time:1, mem:4096, parallelism:1, hashLen:32, type:2 };
@@ -3677,6 +3938,9 @@ function applyLang(code){
   if(passHint.dataset.k) passHint.textContent = T[passHint.dataset.k];
   renderSecbar();
   renderVault();
+  $('lblDen').innerHTML = T.lblDen; denInput.placeholder = T.phDen; denPass.placeholder = T.phDenPass;
+  if(denHint.textContent) denHint.textContent = T.denLimit;
+  renderDenBar();
   $('selfTestBtn').textContent = T.bSelfTest;
   renderFileUi();
   setStatus(lastStatus.key, lastStatus.kind, lastStatus.extra);
