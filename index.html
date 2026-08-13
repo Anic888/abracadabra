@@ -2516,7 +2516,10 @@ async function doEncrypt(){
   if(!password.value){ setStatus('stNoPassEnc', 'err'); password.focus(); return; }
   /* скрытый том: прикрытие = обычное поле, тайник = скрытое. Пароли обязаны
      различаться, иначе один пароль открыл бы оба слота и смысл пропадает. */
-  if(denOn){
+  /* Страховка от «молча потерянного тайника»: если в полях что-то лежит, идём в
+     ветку скрытого тома, даже когда переключатель почему-то выключен. Пусть
+     лучше вылезет внятная ошибка, чем секрет тихо исчезнет из шифровки. */
+  if(denOn || denInput.value.trim() || denPass.value){
     if(!denPass.value){ setStatus('stDenNoPass', 'err'); denPass.focus(); return; }
     if(normPass(denPass.value) === normPass(password.value)){ setStatus('stDenSamePass', 'err'); denPass.focus(); return; }
     if(!denInput.value.trim()){ setStatus('stDenNoText', 'err'); denInput.focus(); return; }
@@ -2587,7 +2590,9 @@ async function doDecrypt(){
   /* скрытый том — тем же паролем открывается тот слот, чей пароль ввели */
   if(found.v === 'd'){
     if(MODE === 'keys'){ setStatus('stWrongModeK', 'err'); return; }
-    if(!password.value){ setStatus('stNoPass', 'err'); password.focus(); return; }
+    /* пароль годится из любого поля: тайник открывают из скрытого, и требовать
+       при этом ещё и верхний — бессмысленно */
+    if(!password.value && !denPass.value){ setStatus('stNoPass', 'err'); password.focus(); return; }
     const epoch = ++opEpoch;
     setBusy(true, decryptBtn, L().bDecBusy); startProgress(L().progDec);
     try{
@@ -2599,7 +2604,7 @@ async function doDecrypt(){
       let res = null, firstErr = null;
       const tryPw = async pw => { try{ return await decryptDeniable(found.compact, pw); }catch(e){ if(!firstErr) firstErr = e; return null; } };
       if(denPass.value) res = await tryPw(denPass.value);
-      if(!res) res = await tryPw(password.value);
+      if(!res && password.value) res = await tryPw(password.value);
       if(!res) throw (firstErr || new Error('bad'));
       if(epoch !== opEpoch) return;
       showResult(res.plain, false);
@@ -2655,7 +2660,15 @@ let denOn = false;
 function renderDenBar(){
   $('denToggle').textContent = '[ ' + (denOn ? '■ ' : '□ ') + L().bDenToggle + ' ]';
   $('denToggle').classList.toggle('on', denOn);
-  $('denPanel').hidden = !denOn;
+  /* Панель тайника — единственный .pass-only элемент со СВОИМ переключателем.
+     applyMode() гасит и зажигает всю группу разом, поэтому видимость панели
+     пересобираем здесь и только здесь, из denOn. Раньше applyMode('pass')
+     на старте раскрывал панель при denOn === false: человек видел открытые
+     поля, заполнял их — а doEncrypt по ветке if(denOn) шифровал обычной
+     ABRA2 и молча выбрасывал тайник. */
+  $('denPanel').hidden = !denOn || MODE === 'keys';
+  $('denGenBtn').textContent = L().bGen;                       /* были зашиты по-русски в разметке */
+  $('denToggleBtn').textContent = denPass.type === 'text' ? L().bHide : L().bShow;
   if(denOn){
     /* если во входе уже лежит шифровка — человек расшифровывает, и ему важнее
        знать, КУДА вводить пароль, чем читать про модель угроз */
@@ -2665,7 +2678,13 @@ function renderDenBar(){
   }
 }
 input.addEventListener('input', () => { if(denOn) renderDenBar(); });
-$('denToggle').addEventListener('click', () => { denOn = !denOn; renderDenBar(); if(denOn) denInput.focus(); });
+$('denToggle').addEventListener('click', () => {
+  denOn = !denOn;
+  /* выключили — чистим поля: и гигиена, и страховка выше не сработает вхолостую */
+  if(!denOn){ denInput.value = ''; denPass.value = ''; setDenVisible(false); }
+  renderDenBar();
+  if(denOn) denInput.focus();
+});
 function setDenVisible(show){
   denPass.type = show ? 'text' : 'password';
   $('denToggleBtn').textContent = show ? L().bHide : L().bShow;
@@ -3398,6 +3417,7 @@ function applyMode(m){
   const keys = MODE === 'keys';
   document.querySelectorAll('.pass-only').forEach(el => el.hidden = keys);
   document.querySelectorAll('.keys-only').forEach(el => el.hidden = !keys);
+  renderDenBar();   /* вернуть панели тайника её собственное состояние: строка выше гасит группу целиком */
   $('modePassBtn').classList.toggle('active', !keys);
   $('modeKeysBtn').classList.toggle('active', keys);
   $('modePassBtn').setAttribute('aria-selected', String(!keys));
@@ -3681,6 +3701,21 @@ async function runSelfTest(){
       const f = new Array(256).fill(0); for(const x of slotB) f[x]++;
       let H = 0; for(const c of f) if(c){ const pr = c/slotB.length; H -= pr*Math.log2(pr); }
       ok('скрытый/слот-случаен', H > 6.5);
+    }
+    /* Регрессия на молчаливую потерю тайника: applyMode() гасит всю группу
+       .pass-only разом и однажды РАСКРЫВАЛА панель тайника при выключенном
+       переключателе. Человек видел открытые поля, заполнял их — а шифровалось
+       обычное ABRA2 без второго слоя. Панель обязана следовать denOn. */
+    {
+      const was = denOn, wasMode = MODE;
+      const vis = () => !$('denPanel').hidden;
+      denOn = false; applyMode('pass');
+      ok('скрытый/панель-скрыта-когда-выключен', vis() === false);
+      denOn = true;  applyMode('pass');
+      ok('скрытый/панель-видна-когда-включён', vis() === true);
+      applyMode('keys');
+      ok('скрытый/панель-скрыта-в-режиме-ключей', vis() === false);
+      denOn = was; applyMode(wasMode);
     }
   }
 
