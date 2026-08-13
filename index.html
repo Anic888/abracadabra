@@ -67,7 +67,112 @@ try{
   --mono:'JetBrains Mono',ui-monospace,SFMono-Regular,Menlo,Consolas,'PingFang SC','Hiragino Sans GB','Microsoft YaHei','Noto Sans CJK SC',monospace;
   --display:'Tektur','JetBrains Mono',sans-serif;
   --serif:Georgia,'Times New Roman','Songti SC','Noto Serif CJK SC',serif;
+  /* фактура фона: сканлайн, сетка, виньетка — вынесены, чтобы тема их задавала */
+  --scanline:rgba(0,0,0,.28);
+  --grid:rgba(61,255,140,.028);
+  --vignette:rgba(0,0,0,.5);
 }
+/* ═══════════ ТЕМЫ ═══════════
+   Переопределяем ТОЛЬКО цвета. Шрифты, разметка и вся вёрстка — общие, поэтому
+   тема не может ничего сломать в логике. Никаких внешних ресурсов: палитры
+   зашиты здесь, ни один шрифт и ни одна картинка не подгружаются из сети —
+   иначе рухнуло бы главное обещание «программа не выходит в сеть». */
+
+/* «Мастерская» — по мотивам kotikvmaske.com: тёплый почти-чёрный, кремовый
+   текст, огненно-оранжевый акцент. Цвета сняты с сайта, шрифты остаются свои. */
+:root[data-theme="forge"]{
+  --bg:#0b0a09;
+  --panel:rgba(23,20,18,.78);
+  --panel-solid:#171412;
+  --line:#2a2521;
+  --line-strong:#3d352e;
+  --text:#ede6dd;
+  --muted:#a39a8e;
+  --faint:#6f665c;
+  --neon:#ff6a1a;              /* акцент — огонь */
+  --neon-soft:#ffa76b;
+  --neon-dark:#1a0d05;
+  --magenta:#ff3b30;
+  --amber:#ffb340;
+  --cyan:#d8c7b0;
+  --scanline:rgba(0,0,0,.22);
+  --grid:rgba(255,106,26,.030);
+  --vignette:rgba(0,0,0,.45);
+}
+/* «Светлая» — в духе apple.com. Одной сменой цветов тут не обойтись: терминальный
+   характер держится на моноширинном шрифте, широкой разрядке и нулевых
+   скруглениях, а у Apple всё ровно наоборот — системный гротеск, ПЛОТНАЯ
+   посадка с отрицательным трекингом, щедрые скругления и белый фон с серыми
+   полосами-панелями. Поэтому тема правит ещё типографику и формы (см. блок
+   ниже). Логику она по-прежнему не трогает — это чистый CSS. */
+:root[data-theme="light"]{
+  --bg:#ffffff;
+  --panel:#f5f5f7;             /* серая полоса-секция на белом — приём apple.com */
+  --panel-solid:#f5f5f7;
+  --line:#d2d2d7;
+  --line-strong:#c7c7cc;
+  --text:#1d1d1f;              /* не чистый чёрный — как у Apple */
+  --muted:#6e6e73;
+  --faint:#86868b;
+  --neon:#0071e3;              /* системный синий */
+  --neon-soft:#0a84ff;
+  --neon-dark:#ffffff;
+  --magenta:#d70015;
+  --amber:#8a5a00;
+  --cyan:#0071e3;
+  /* фактура терминала на белом выглядит грязью — убираем полностью */
+  --scanline:transparent;
+  --grid:transparent;
+  --vignette:transparent;
+  --texture-opacity:0;
+}
+/* Типографика и формы светлой темы: системный гротеск вместо моноширинного,
+   плотная посадка вместо разрядки, скругления вместо острых углов.
+   Моноширинный остаётся ТОЛЬКО там, где он несёт смысл — в полях с шифровкой,
+   ключами и отпечатками: там важна колонка символ-в-символ. */
+:root[data-theme="light"] body,
+:root[data-theme="light"] .kicker,
+:root[data-theme="light"] .mode,
+:root[data-theme="light"] .btn,
+:root[data-theme="light"] .btn-ghost,
+:root[data-theme="light"] .sec-label,
+:root[data-theme="light"] .field-head,
+:root[data-theme="light"] .status,
+:root[data-theme="light"] .readout,
+:root[data-theme="light"] .help,
+:root[data-theme="light"] .lang,
+:root[data-theme="light"] .theme{
+  font-family:-apple-system,BlinkMacSystemFont,'SF Pro Text','Helvetica Neue',Arial,sans-serif;
+  letter-spacing:normal;
+  text-transform:none;
+}
+:root[data-theme="light"] .kicker{letter-spacing:.01em;font-weight:600}
+:root[data-theme="light"] h1,
+:root[data-theme="light"] .brandline{
+  font-family:-apple-system,BlinkMacSystemFont,'SF Pro Display','Helvetica Neue',Arial,sans-serif;
+  letter-spacing:-.022em;          /* фирменный отрицательный трекинг Apple */
+  font-weight:700;
+}
+:root[data-theme="light"] .panel,
+:root[data-theme="light"] .filecard,
+:root[data-theme="light"] textarea,
+:root[data-theme="light"] input,
+:root[data-theme="light"] .keyin,
+:root[data-theme="light"] .vaultin{border-radius:14px}
+:root[data-theme="light"] .mode,
+:root[data-theme="light"] .btn{border-radius:980px}   /* кнопки-пилюли */
+:root[data-theme="light"] .btn-ghost{border-radius:8px}
+/* глитч-анимация заголовка, бегущий луч и уголки-скобки на панелях —
+   терминальный жанр, у Apple их место занимает чистая заливка и воздух */
+:root[data-theme="light"] .scan{display:none}
+:root[data-theme="light"] h1::before,
+:root[data-theme="light"] h1::after{display:none}
+:root[data-theme="light"] .panel::before,
+:root[data-theme="light"] .panel::after,
+:root[data-theme="light"] .readout::before,
+:root[data-theme="light"] .readout::after{display:none}
+:root[data-theme="light"] .panel{border-color:transparent}
+:root[data-theme="light"] .readout{border-color:var(--line)}
 *{box-sizing:border-box}
 /* Авторское display:flex перебивает [hidden]{display:none} браузера, поэтому
    скрытые через .hidden = true панели оставались на экране и в порядке обхода
@@ -86,14 +191,15 @@ body::before{
   content:'';position:fixed;inset:0;z-index:0;pointer-events:none;
   background:
     url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='120'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='2'/%3E%3C/filter%3E%3Crect width='120' height='120' filter='url(%23n)' opacity='.05'/%3E%3C/svg%3E"),
-    repeating-linear-gradient(0deg,rgba(0,0,0,.28) 0 1px,transparent 1px 3px),
-    linear-gradient(rgba(61,255,140,.028) 1px,transparent 1px),
-    linear-gradient(90deg,rgba(61,255,140,.028) 1px,transparent 1px);
+    repeating-linear-gradient(0deg,var(--scanline) 0 1px,transparent 1px 3px),
+    linear-gradient(var(--grid) 1px,transparent 1px),
+    linear-gradient(90deg,var(--grid) 1px,transparent 1px);
   background-size:120px 120px,auto,44px 44px,44px 44px;
+  opacity:var(--texture-opacity,1);
 }
 body::after{
   content:'';position:fixed;inset:0;z-index:0;pointer-events:none;
-  background:radial-gradient(120% 90% at 50% 8%,transparent 55%,rgba(0,0,0,.5));
+  background:radial-gradient(120% 90% at 50% 8%,transparent 55%,var(--vignette));
 }
 .scan{position:fixed;inset:0;z-index:1;pointer-events:none;overflow:hidden}
 .scan::before{
@@ -107,6 +213,23 @@ body::after{
 
 /* ── языки ── */
 .langbar{position:absolute;top:14px;right:22px;display:flex;gap:4px}
+/* Переключатель тем — под языками, тот же визуальный язык. Собственные правила,
+   БЕЗ класса .lang: он принадлежит языковой панели, которая на каждом
+   переключении языка сбрасывает .active у всех своих кнопок и вешает на них
+   обработчик смены языка. Общий класс превратил бы тему в чужую кнопку —
+   подсветка слетала бы, а клик менял язык. Тот же класс двух хозяев, что уже
+   ломал панель скрытого тома. */
+.themebar{position:absolute;top:40px;right:22px;display:flex;gap:4px}
+.theme{
+  background:none;border:none;cursor:pointer;
+  padding:4px 5px;
+  color:var(--faint);
+  font:700 12px/1 var(--mono);
+  transition:color .15s;
+}
+.theme:hover{color:var(--muted)}
+.theme.active{color:var(--neon)}
+.theme:focus-visible{outline:1.5px solid var(--neon);outline-offset:1px}
 .lang{
   background:none;border:none;cursor:pointer;
   padding:4px 5px;
@@ -437,6 +560,12 @@ footer .sep{color:var(--line-strong)}
     <button class="lang" data-lang="en" type="button">EN</button>
     <button class="lang" data-lang="zh" type="button">中文</button>
     <button class="lang" data-lang="es" type="button">ES</button>
+  </nav>
+
+  <nav class="themebar" aria-label="Тема оформления">
+    <button class="theme" data-theme="terminal" type="button" title="Терминал">◾</button>
+    <button class="theme" data-theme="forge" type="button" title="Мастерская">◼</button>
+    <button class="theme" data-theme="light" type="button" title="Светлая">◻</button>
   </nav>
 
   <header>
@@ -4065,6 +4194,29 @@ $('vaultPass').addEventListener('keydown', e => {
   if(e.key === 'Enter'){ e.preventDefault(); (vaultHas() ? vaultLoad : vaultSave)(); }
 });
 
+/* ── темы оформления ──
+   Меняются ТОЛЬКО цвета через data-theme на <html>; разметка и логика общие,
+   поэтому тема физически не может повлиять на шифрование. Выбор храним в
+   localStorage — это не секрет, а настройка внешнего вида; если хранилище
+   недоступно (приватный режим), просто работаем без запоминания. */
+const THEMES = ['terminal','forge','light'];
+let THEME = 'terminal';
+function applyTheme(name){
+  THEME = THEMES.includes(name) ? name : 'terminal';
+  /* терминал — это базовый :root, отдельный атрибут ему не нужен */
+  if(THEME === 'terminal') document.documentElement.removeAttribute('data-theme');
+  else document.documentElement.setAttribute('data-theme', THEME);
+  document.querySelectorAll('.theme').forEach(b =>
+    b.classList.toggle('active', b.dataset.theme === THEME));
+  /* цвет системной строки статуса в мобильной обёртке */
+  const meta = document.querySelector('meta[name="theme-color"]');
+  if(meta) meta.setAttribute('content', getComputedStyle(document.documentElement)
+    .getPropertyValue('--bg').trim() || '#050607');
+  try{ const s = vaultStore(); if(s) s.setItem('abra.theme', THEME); }catch(e){}
+}
+document.querySelectorAll('.theme').forEach(b =>
+  b.addEventListener('click', () => applyTheme(b.dataset.theme)));
+
 /* ── применение языка ── */
 function applyLang(code){
   LANG = I18N[code] ? code : 'en';
@@ -4113,6 +4265,14 @@ document.querySelectorAll('.lang').forEach(b => b.addEventListener('click', () =
   applyLang(nav.startsWith('ru') ? 'ru' : nav.startsWith('zh') ? 'zh' : nav.startsWith('es') ? 'es' : 'en');
 }
 applyMode('pass');
+
+/* восстановление темы: сохранённая → иначе системная светлая → терминал */
+{
+  let saved = null;
+  try{ const s = vaultStore(); saved = s && s.getItem('abra.theme'); }catch(e){}
+  if(!saved && window.matchMedia && matchMedia('(prefers-color-scheme: light)').matches) saved = 'light';
+  applyTheme(saved || 'terminal');
+}
 
 /* PWA: офлайн-кэш для версии, открытой с сайта. Для file:// не нужен и не
    запускается. Важная оговорка: сам service worker живёт вне политики этой

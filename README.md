@@ -125,7 +125,7 @@ The tool is a single HTML file that travels by email, chat and USB stick. Nothin
 inside a page can prove that page has not been rewritten, so the check has to come
 from outside it. Current `index.html`:
 
-`bba97aaa54d59034f12cdd67626e27cfaa3b0bd130c770b83ba1dd3089d1beb5`
+`2d11020c66bba0ecd09938069e93e82ed8387ba0f218b843b0205e153be0fb2e`
 
 ```bash
 shasum -a 256 index.html          # macOS
@@ -203,7 +203,7 @@ Ed25519; шифровки, созданные версией 5.0; и попыт�
 внутри страницы не может доказать, что страницу не переписали, поэтому проверка
 обязана прийти **снаружи**. Текущий `index.html`:
 
-`bba97aaa54d59034f12cdd67626e27cfaa3b0bd130c770b83ba1dd3089d1beb5`
+`2d11020c66bba0ecd09938069e93e82ed8387ba0f218b843b0205e153be0fb2e`
 
 ```bash
 shasum -a 256 index.html          # macOS
