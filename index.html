@@ -209,10 +209,21 @@ body::after{
 }
 @keyframes sweep{to{top:112%}}
 ::selection{background:var(--neon);color:var(--neon-dark)}
-.wrap{position:relative;z-index:3;max-width:820px;margin:0 auto;padding:46px 22px 46px}
+/* Запас на безопасные зоны. Сейчас env(safe-area-inset-*) везде равны нулю:
+   в браузере — потому что вырезов нет, в нативной оболочке — потому что
+   Capacitor сам держит WebView ниже статус-бара, и страница до него не достаёт.
+   ПРОВЕРЕНО: попытка включить viewport-fit=cover, чтобы «дотянуться» под вырез,
+   сделала хуже — страница уехала под часы, а языковая панель наехала на них,
+   потому что env() при этом всё равно вернул нули. Оставлено как безвредный
+   запас на случай, если обёртка когда-нибудь перестанет держать отступ сама. */
+.wrap{
+  position:relative;z-index:3;max-width:820px;margin:0 auto;
+  padding:calc(46px + env(safe-area-inset-top)) calc(22px + env(safe-area-inset-right))
+          calc(46px + env(safe-area-inset-bottom)) calc(22px + env(safe-area-inset-left));
+}
 
 /* ── языки ── */
-.langbar{position:absolute;top:14px;right:22px;display:flex;gap:4px}
+.langbar{position:absolute;top:calc(14px + env(safe-area-inset-top));right:calc(22px + env(safe-area-inset-right));display:flex;gap:4px}
 /* Переключатель тем — под языками, тот же визуальный язык. Собственные правила,
    БЕЗ класса .lang: он принадлежит языковой панели, которая на каждом
    переключении языка сбрасывает .active у всех своих кнопок и вешает на них
